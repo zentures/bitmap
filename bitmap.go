@@ -9,11 +9,10 @@ package bitmap
 type Bitmap interface {
 	Set(int64) Bitmap
 	Get(int64) bool
-	Cap() int64
-	Len() int64
-	Clear() Bitmap
+	Size() int64
 	Reset()
 	Clone() Bitmap
+	Copy(Bitmap) Bitmap
 	Equal() bool
 
 	Cardinality() int64

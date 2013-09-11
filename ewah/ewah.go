@@ -74,8 +74,8 @@ func (this *Ewah) Set(i int64) bitmap.Bitmap {
 	// Distance of the bit from the active word in the buffer
 	// We want to know this so we can decide whether we need to add some empty words to pad the bitmap,
 	// or update the bit in the current word
-	dist := (i + this.wordInBits) / this.wordInBits - (this.sizeInBits + this.wordInBits - 1) / this.wordInBits
-	//fmt.Println("ewah.go/Set: dist =", dist)
+	dist := (i + wordInBits) / wordInBits - (this.sizeInBits + wordInBits - 1) / wordInBits
+	//fmt.Println("ewah.go/Set: dist =", dist, "size =", this.sizeInBits)
 
 	// Set the new size of the bitmap to the latest bit that's set (index is 0-based, thus +1)
 	this.sizeInBits = i + 1
@@ -100,6 +100,7 @@ func (this *Ewah) Set(i int64) bitmap.Bitmap {
 	if this.rlw.getNumberOfLiteralWords() == 0 {
 		this.rlw.setRunningLength(this.rlw.getRunningLength() - 1)
 		this.addLiteralWord(1 << uint64(i % this.wordInBits))
+		//fmt.Println("ewah.go/Set: after addLiteralWord inside numOfLiteralWords == 0")
 		return this
 	}
 
@@ -109,6 +110,7 @@ func (this *Ewah) Set(i int64) bitmap.Bitmap {
 		this.actualSizeInWords -= 1
 		this.rlw.setNumberOfLiteralWords(int64(this.rlw.getNumberOfLiteralWords()) - 1)
 		this.addEmptyWord(true)
+		//fmt.Println("ewah.go/Set: after addEmptyWord")
 	}
 
 	return this
@@ -129,6 +131,7 @@ func (this *Ewah) Get(i int64) bool {
 
 	for wordChecked <= wordi {
 		m.reset(this.buffer, marker)
+		//fmt.Printf("ewah.go/Get: marker = %064b\n", m.getActualWord())
 		numOfLiteralWords := int64(m.getNumberOfLiteralWords())
 		wordChecked += m.getRunningLength()
 
@@ -137,6 +140,9 @@ func (this *Ewah) Get(i int64) bool {
 		}
 
 		if wordi < wordChecked + numOfLiteralWords {
+			//fmt.Printf("ewah.go/Get: index = %d\n", marker + (wordi - wordChecked) + 1)
+			//fmt.Printf("ewah.go/Get: word = %064b\n", this.buffer[marker + (wordi - wordChecked) + 1])
+			//fmt.Printf("ewah.go/Get: bit = %064b\n", this.buffer[marker + (wordi - wordChecked) + 1] & (int64(1) << biti))
 			return this.buffer[marker + (wordi - wordChecked) + 1] & (int64(1) << biti) != 0
 		}
 		wordChecked += numOfLiteralWords
@@ -146,16 +152,32 @@ func (this *Ewah) Get(i int64) bool {
 	return false
 }
 
-func (this *Ewah) Cap() int64 {
-	return 0
-}
+func (this *Ewah) Swap(other *Ewah) bitmap.Bitmap {
+	this.buffer, other.buffer = other.buffer, this.buffer
+	this.rlw, other.rlw = other.rlw, this.rlw
+	this.actualSizeInWords, other.actualSizeInWords = other.actualSizeInWords, this.actualSizeInWords
+	this.sizeInBits, other.sizeInBits = other.sizeInBits, this.sizeInBits
 
-func (this *Ewah) Len() int64 {
-	return 0
-}
-
-func (this *Ewah) Clear() bitmap.Bitmap {
 	return this
+}
+
+// Returns the size in bits of the *uncompressed* bitmap represented by this compressed bitmap.
+// Initially, the sizeInBits is zero. It is extended automatically when you set bits to true.
+func (this *Ewah) Size() int64 {
+	return this.sizeInBits
+}
+
+// Report the *compressed* size of the bitmap (equivalent to memory usage, after accounting for some overhead).
+func (this *Ewah) SizeInBytes() int64 {
+	return this.actualSizeInWords * (this.wordInBits / 8)
+}
+
+func (this *Ewah) SizeInWords() int64 {
+	return this.actualSizeInWords
+}
+
+func (this *Ewah) Clear() {
+	this.Reset()
 }
 
 func (this *Ewah) Reset() {
@@ -174,6 +196,24 @@ func (this *Ewah) Reset() {
 }
 
 func (this *Ewah) Clone() bitmap.Bitmap {
+	c := New().(*Ewah)
+	c.reserve(int32(this.actualSizeInWords))
+	copy(c.buffer, this.buffer)
+	c.actualSizeInWords = this.actualSizeInWords
+	c.sizeInBits = this.sizeInBits
+	c.rlw.reset(c.buffer, this.rlw.p)
+
+	return c
+}
+
+func (this *Ewah) Copy(other bitmap.Bitmap) bitmap.Bitmap {
+	o := other.(*Ewah)
+	this.buffer = make([]int64, o.SizeInWords())
+	copy(this.buffer, o.buffer)
+	this.actualSizeInWords = o.SizeInWords()
+	this.sizeInBits = o.Size()
+	this.rlw.reset(this.buffer, o.rlw.p)
+
 	return this
 }
 
@@ -196,7 +236,9 @@ func (this *Ewah) Cardinality() int64 {
 
 		numOfLiteralWords := int64(localrlw.getNumberOfLiteralWords())
 
+		//fmt.Printf("ewah.go/Cardinality: marker = %064b\n", localrlw.getActualWord())
 		for j := int64(1); j <= numOfLiteralWords; j++ {
+			//fmt.Println("ewah.go/Cardinality: literawords =", numOfLiteralWords, "marker =", marker, "j =", j)
 			counter += int64(popcount_3(uint64(this.buffer[marker + j])))
 		}
 
@@ -266,28 +308,21 @@ func (this *Ewah) Not() bitmap.Bitmap {
 	return this
 }
 
-func (this *Ewah) Swap(other *Ewah) bitmap.Bitmap {
-	this.buffer, other.buffer = other.buffer, this.buffer
-	this.rlw, other.rlw = other.rlw, this.rlw
-	this.actualSizeInWords, other.actualSizeInWords = other.actualSizeInWords, this.actualSizeInWords
-	this.sizeInBits, other.sizeInBits = other.sizeInBits, this.sizeInBits
-
-	return this
-}
-
 func (this *Ewah) PrintStats(details bool) {
 	fmt.Println("actualSizeInWords =", this.actualSizeInWords, "words,", this.actualSizeInWords*this.wordInBits, "bits")
 	fmt.Println("actualSizeInBits =", this.sizeInBits)
 	fmt.Println("cardinality =", this.Cardinality())
 
 	if details {
-		fmt.Println("                           0123456789012345678901234567890123456789012345678901234567890123")
-		for i := int64(0); i < this.actualSizeInWords; i++ {
-			fmt.Printf("%4d: %20d %064b\n", i, uint64(this.buffer[i]), uint64(this.buffer[i]))
-		}
+		this.printDetails()
 	}
+}
 
-	//this.rlw.printStats()
+func (this *Ewah) printDetails() {
+	fmt.Println("                           0123456789012345678901234567890123456789012345678901234567890123")
+	for i := int64(0); i < this.actualSizeInWords; i++ {
+		fmt.Printf("%4d: %20d %064b\n", i, uint64(this.buffer[i]), uint64(this.buffer[i]))
+	}
 }
 
 //
@@ -805,6 +840,7 @@ func (this *Ewah) pushBackMultiple(data []int64, start, number int32) {
 		oldBuffer := this.buffer
 		this.buffer = make([]int64, newSize)
 		copy(this.buffer, oldBuffer)
+		this.rlw.reset(this.buffer, this.rlw.p)
 		//this.rlw.array = this.buffer
 	}
 	copy(this.buffer[this.actualSizeInWords:], data[start:start+number])
@@ -848,26 +884,11 @@ func (this *Ewah) setSizeInBitsWithDefault(size int64, defaultValue bool) bool {
 
 }
 
-// Returns the size in bits of the *uncompressed* bitmap represented by this compressed bitmap.
-// Initially, the sizeInBits is zero. It is extended automatically when you set bits to true.
-func (this *Ewah) getSizeInBits() int64 {
-	return this.sizeInBits
-}
-
-// Report the *compressed* size of the bitmap (equivalent to memory usage, after accounting for some overhead).
-func (this *Ewah) sizeInBytes() int64 {
-	return this.actualSizeInWords * (this.wordInBits / 8)
-}
-
 func (this *Ewah) toArray() []int {
 	return nil
 }
 
 func (this *Ewah) extendEmptyBits(storage *Ewah, currentSize, newSize int64) {
-
-}
-
-func (this *Ewah) cardinality() {
 
 }
 

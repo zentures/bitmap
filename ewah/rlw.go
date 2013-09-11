@@ -23,6 +23,7 @@ const (
 
 type runningLengthWord struct {
 	*int64
+	p int64
 }
 
 // New creates a new running length word
@@ -32,11 +33,13 @@ func newRunningLengthWord(a []int64, p int64) *runningLengthWord {
 	//return &((*runningLengthWord)(&(a[p])))
 	return &runningLengthWord{
 		int64: &(a[p]),
+		p: p,
 	}
 }
 
 func (this *runningLengthWord) reset(a []int64, p int64) *runningLengthWord {
 	this.int64 = &(a[p])
+	this.p = p
 	return this
 }
 
