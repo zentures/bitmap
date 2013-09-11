@@ -84,7 +84,7 @@ func (this *Bitset) Xor(a bitmap.Bitmap) bitmap.Bitmap {
 }
 
 func (this *Bitset) Not() bitmap.Bitmap {
-	this.b.Complement()
+	this.b = this.b.Complement()
 	return this
 }
 

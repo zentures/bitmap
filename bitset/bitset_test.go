@@ -274,7 +274,6 @@ func TestOr(t *testing.T) {
 	}
 }
 
-/*
 func TestNot(t *testing.T) {
 	bm2 := New().(*Bitset)
 
@@ -287,18 +286,17 @@ func TestNot(t *testing.T) {
 	bm2.Not()
 	c2 := bm2.Cardinality()
 
+	if c1 != size - c2 {
+		t.Fatalf("c1 (%d) != size (%d) - c2 (%d)", c1, size, c2)
+	}
+
 	nums2 := []int64{10, 100, 10000}
 	for i := range nums2 {
 		if bm2.Get(nums2[i]) {
 			t.Fatalf("Get(%d) failed, should NOT be set\n", nums2[i])
 		}
 	}
-
-	if c1 != size - c2 {
-		t.Fatalf("c1 (%d) != size (%d) - c2 (%d)", c1, size, c2)
-	}
 }
-*/
 
 func TestXor(t *testing.T) {
 	bm2 := New().(*Bitset)
