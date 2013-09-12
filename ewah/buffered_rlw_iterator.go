@@ -137,7 +137,7 @@ func (this *BufferedRunningLengthWordIterator) dischargeInternal(container Bitma
 			pd = int32(max - index)
 		}
 
-		this.writeLiteralWords(pd, container)
+		write(pd, container)
 		this.discardFirstWords(pl + int64(pd))
 		index += int64(pd)
 	}

@@ -9,17 +9,19 @@ package ewah
 import (
 	"testing"
 	"math/rand"
+	"fmt"
 )
 
 const (
 	c1 uint32 = 0xcc9e2d51
 	c2 uint32 = 0x1b873593
+
+	count int = 10000
 )
 
 var (
 	nums, nums10 []int64
 	bm, bm10 *Ewah
-	count int = 10000
 )
 
 func init() {
@@ -29,14 +31,14 @@ func init() {
 	bit := int64(0)
 	rand.Seed(int64(c1))
 	for i := 0; i < count; i++ {
-		bit += int64(rand.Intn(1000)+1)
+		bit += int64(rand.Intn(10000)+1)
 		nums[i] = bit
 	}
 
 	bit = int64(0)
 	rand.Seed(int64(c2))
 	for i := 0; i < count; i++ {
-		bit += int64(rand.Intn(1000)+1)
+		bit += int64(rand.Intn(10000)+1)
 		nums10[i] = bit
 	}
 
@@ -49,17 +51,16 @@ func TestSet(t *testing.T) {
 		if !bm.Set(nums[i]).Get(nums[i]) {
 			t.Fatalf("Problem setting bm[%d] with number %d\n", i, nums[i])
 		}
+	}
+	for i := 0; i < count; i++ {
 		if !bm10.Set(nums10[i]).Get(nums10[i]) {
 			t.Fatalf("Problem setting bm10[%d] with number %d\n", i, nums10[i])
 		}
 	}
-	for i := 0; i < count; i++ {
-		if ! bm.Get(nums[i]) {
-			t.Fatalf("Check(%d) at %d failed\n", nums[i], i)
-		}
-	}
+	bm.PrintStats(false)
+	bm10.PrintStats(false)
 }
-
+/*
 func TestSet2(t *testing.T) {
 	rs := []int64{10, 100, 1000, 10000, 100000}
 	bm2 := New().(*Ewah)
@@ -219,6 +220,103 @@ func TestAnd(t *testing.T) {
 	}
 }
 
+func TestAnd2(t *testing.T) {
+	bm2 := New().(*Ewah)
+	bm3 := New().(*Ewah)
+
+	bm2.Set(10)
+	bm2.Set(70)
+	bm2.Set(100)
+	bm3.Set(100)
+	bm3.Set(300)
+	bm3.Set(15000)
+
+	bm4 := bm2.And2(bm3)
+	//bm4.(*Ewah).PrintStats(true)
+
+	if bm4.Cardinality() != 1 {
+		t.Fatal("Cardinality != 1")
+	}
+
+
+	if bm4.Get(10) {
+		t.Fatalf("Get(%d) failed, should NOT be set\n", 10)
+	}
+
+	if bm4.Get(70) {
+		t.Fatalf("Get(%d) failed, should NOT be set\n", 70)
+	}
+
+	if !bm4.Get(100) {
+		t.Fatalf("Get(%d) failed, should be set\n", 100)
+	}
+
+	if bm4.Get(15000) {
+		t.Fatalf("Get(%d) failed, should NOT be set\n", 150)
+	}
+
+}
+
+func TestAndAndAnd2(t *testing.T) {
+	bm2 := bm.And(bm10)
+	bm3 := bm.And2(bm10)
+
+	c2 := bm2.(*Ewah).Cardinality()
+	c3 := bm3.(*Ewah).Cardinality()
+
+	bm2.(*Ewah).PrintStats(true)
+	bm3.(*Ewah).PrintStats(true)
+
+	if c2 != c3 {
+		t.Fatalf("c2(%d) != c3(%d)\n", c2, c3)
+	}
+}
+*/
+
+func TestAnd2More(t *testing.T) {
+	rs := []int64{10, 100, 1000, 5000, 10000, 100000}
+
+	for h := range rs {
+		for i := range rs {
+			bit := int64(0)
+			rand.Seed(int64(c1))
+
+			bm2 := New().(*Ewah)
+
+			for j := int64(0); j < rs[i]; j++ {
+				bit += int64(rand.Intn(int(rs[h]))+1)
+				bm2.Set(bit)
+			}
+
+			for k := range rs {
+				bit2 := int64(0)
+				rand.Seed(int64(c2))
+
+				bm3 := New().(*Ewah)
+
+				for l := int64(0); l < rs[k]; l++ {
+					bit2 += int64(rand.Intn(int(rs[h]))+1)
+					bm3.Set(bit2)
+				}
+
+				bm4 := bm2.And(bm3)
+				bm5 := bm2.And2(bm3)
+
+				if !bm4.(*Ewah).Equal(bm5) {
+					fmt.Printf("************* Testing h = %d, i = %d, k = %d\n", rs[h], rs[i], rs[k])
+					fmt.Println("==============> bm4 != bm5")
+					bm2.PrintStats(true)
+					bm3.PrintStats(true)
+					bm4.(*Ewah).PrintStats(true)
+					bm5.(*Ewah).PrintStats(true)
+					t.Fatal("==============> bm4 != bm5")
+				}
+			}
+		}
+	}
+}
+
+/*
 func TestAndNot(t *testing.T) {
 	bm2 := New().(*Ewah)
 	bm3 := New().(*Ewah)
@@ -422,7 +520,7 @@ func BenchmarkCardinality4(b *testing.B) {
 		bm.Cardinality4()
 	}
 }
-
+*/
 func BenchmarkAnd(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		if bm.And(bm10) == nil {
@@ -431,6 +529,14 @@ func BenchmarkAnd(b *testing.B) {
 	}
 }
 
+func BenchmarkAnd2(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		if bm.And2(bm10) == nil {
+			b.Fatal("BenchmarkAnd2: Problem with And() at i =", i)
+		}
+	}
+}
+/*
 func BenchmarkOr(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		if bm.Or(bm10) == nil {
@@ -462,3 +568,4 @@ func BenchmarkNot(b *testing.B) {
 		}
 	}
 }
+*/

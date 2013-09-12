@@ -6,6 +6,10 @@
 
 package ewah
 
+import (
+	"github.com/zhenjl/bitmap"
+	"math"
+)
 
 func (this *Ewah) Cardinality2() int64 {
 	counter := int64(0)
@@ -68,6 +72,42 @@ func (this *Ewah) Cardinality4() int64 {
 	return counter
 }
 
+func (this *Ewah) Get1(i int64) bool {
+	if i < 0 || i > this.sizeInBits {
+		return false
+	}
+
+	wordi := i / wordInBits
+	biti := uint64(i % wordInBits)
+
+	wordChecked := int64(0)
+	marker := int64(0)
+
+	// index to marker word
+	m := newRunningLengthWord(this.buffer, marker)
+
+	for wordChecked <= wordi {
+		m.reset(this.buffer, marker)
+		//fmt.Printf("ewah.go/Get: marker = %064b\n", m.getActualWord())
+		numOfLiteralWords := int64(m.getNumberOfLiteralWords())
+		wordChecked += m.getRunningLength()
+
+		if wordi < wordChecked {
+			return m.getRunningBit()
+		}
+
+		if wordi < wordChecked + numOfLiteralWords {
+			//fmt.Printf("ewah.go/Get: index = %d\n", marker + (wordi - wordChecked) + 1)
+			//fmt.Printf("ewah.go/Get: word = %064b\n", this.buffer[marker + (wordi - wordChecked) + 1])
+			//fmt.Printf("ewah.go/Get: bit = %064b\n", this.buffer[marker + (wordi - wordChecked) + 1] & (int64(1) << biti))
+			return this.buffer[marker + (wordi - wordChecked) + 1] & (int64(1) << biti) != 0
+		}
+		wordChecked += numOfLiteralWords
+		marker += numOfLiteralWords + 1
+	}
+
+	return false
+}
 
 func (this *Ewah) Get2(i int64) bool {
 	if i < 0 || i > this.sizeInBits {
@@ -75,8 +115,8 @@ func (this *Ewah) Get2(i int64) bool {
 	}
 
 	wordChecked := int64(0)
-	wordi := i / this.wordInBits
-	biti := uint64(i % this.wordInBits)
+	wordi := i / wordInBits
+	biti := uint64(i % wordInBits)
 
 	// index to marker word
 	iter := NewEWAHIterator(this.buffer, this.actualSizeInWords)
@@ -112,8 +152,8 @@ func (this *Ewah) Get3(i int64) bool {
 
 	wordChecked := int64(0)
 	j := newBufferedRunningLengthWordIterator(NewEWAHIterator(this.buffer, this.actualSizeInWords))
-	wordi := i/this.wordInBits
-	biti := i%this.wordInBits
+	wordi := i/wordInBits
+	biti := i%wordInBits
 
 	for wordChecked <= wordi {
 		brlw := j.brlw
@@ -134,3 +174,64 @@ func (this *Ewah) Get3(i int64) bool {
 
 	return false;
 }
+func (this *Ewah) And2(a bitmap.Bitmap) bitmap.Bitmap {
+	return this.bitOp(a, this.andToContainer2)
+}
+
+func (this *Ewah) andToContainer2(a *Ewah, container BitmapStorage) {
+	i := NewEWAHIterator(a.buffer, a.actualSizeInWords)
+	j := NewEWAHIterator(this.buffer, this.actualSizeInWords)
+
+	rlwi := newBufferedRunningLengthWordIterator(i)
+	rlwj := newBufferedRunningLengthWordIterator(j)
+
+	for rlwi.size() > 0 && rlwj.size() > 0 {
+		for rlwi.getRunningLength() > 0 || rlwj.getRunningLength() > 0 {
+			i_is_prey := rlwi.getRunningLength() < rlwj.getRunningLength()
+			var prey, predator *BufferedRunningLengthWordIterator
+
+			if i_is_prey {
+				prey = rlwi
+				predator = rlwj
+			} else {
+				prey = rlwj
+				predator = rlwi
+			}
+
+			if predator.getRunningBit() == false {
+				container.addStreamOfEmptyWords(false, predator.getRunningLength())
+				prey.discardFirstWords(predator.getRunningLength())
+				predator.discardFirstWords(predator.getRunningLength())
+			} else {
+				index := prey.discharge(container, predator.getRunningLength())
+				container.addStreamOfEmptyWords(false, predator.getRunningLength() - index)
+				predator.discardFirstWords(predator.getRunningLength())
+			}
+		}
+
+		nbre_literal := int64(math.Min(float64(rlwi.getNumberOfLiteralWords()), float64(rlwj.getNumberOfLiteralWords())))
+		if nbre_literal > 0 {
+			for k := int32(0); k < int32(nbre_literal); k++ {
+				container.add(rlwi.getLiteralWordAt(k) & rlwj.getLiteralWordAt(k))
+			}
+
+			rlwi.discardFirstWords(nbre_literal)
+			rlwj.discardFirstWords(nbre_literal)
+		}
+	}
+
+	if this.adjustContainerSizeWhenAggregating {
+		i_remains := rlwi.size() > 0
+		var remaining *BufferedRunningLengthWordIterator
+
+		if i_remains {
+			remaining = rlwi
+		} else {
+			remaining = rlwj
+		}
+
+		remaining.dischargeAsEmpty(container)
+		container.setSizeInBits(int64(math.Max(float64(this.sizeInBits), float64(a.sizeInBits))))
+	}
+}
+

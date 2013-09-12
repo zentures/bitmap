@@ -13,7 +13,7 @@ type Bitmap interface {
 	Reset()
 	Clone() Bitmap
 	Copy(Bitmap) Bitmap
-	Equal() bool
+	Equal(Bitmap) bool
 
 	Cardinality() int64
 
