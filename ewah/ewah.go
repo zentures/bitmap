@@ -267,8 +267,10 @@ func (this *Ewah) Equal(other bitmap.Bitmap) bool {
 		return false
 	}
 
-	for p, v := range this.buffer {
-		if o.buffer[p] != v {
+	//fmt.Printf("ewah.go/Equal: sizeInWords = %d, this.cap = %d, o.cap = %d\n", this.SizeInWords(), cap(this.buffer), cap(o.buffer))
+
+	for i := int64(0); i < this.actualSizeInWords; i++ {
+		if o.buffer[i] != this.buffer[i] {
 			return false
 		}
 	}

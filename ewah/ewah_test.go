@@ -10,6 +10,8 @@ import (
 	"testing"
 	"math/rand"
 	"fmt"
+	"time"
+	"github.com/zhenjl/bitmap"
 )
 
 const (
@@ -57,10 +59,10 @@ func TestSet(t *testing.T) {
 			t.Fatalf("Problem setting bm10[%d] with number %d\n", i, nums10[i])
 		}
 	}
-	bm.PrintStats(false)
-	bm10.PrintStats(false)
+	//bm.PrintStats(false)
+	//bm10.PrintStats(false)
 }
-/*
+
 func TestSet2(t *testing.T) {
 	rs := []int64{10, 100, 1000, 10000, 100000}
 	bm2 := New().(*Ewah)
@@ -257,22 +259,7 @@ func TestAnd2(t *testing.T) {
 
 }
 
-func TestAndAndAnd2(t *testing.T) {
-	bm2 := bm.And(bm10)
-	bm3 := bm.And2(bm10)
-
-	c2 := bm2.(*Ewah).Cardinality()
-	c3 := bm3.(*Ewah).Cardinality()
-
-	bm2.(*Ewah).PrintStats(true)
-	bm3.(*Ewah).PrintStats(true)
-
-	if c2 != c3 {
-		t.Fatalf("c2(%d) != c3(%d)\n", c2, c3)
-	}
-}
-
-func TestAnd2More(t *testing.T) {
+func TestAndCompare(t *testing.T) {
 	rs := []int64{10, 100, 1000, 5000, 10000, 100000}
 
 	for h := range rs {
@@ -315,7 +302,135 @@ func TestAnd2More(t *testing.T) {
 	}
 }
 
-func TestOr2More(t *testing.T) {
+func TestAndMultiple(t *testing.T) {
+	rs := []int64{10, 100, 1000, 5000, 10000, 100000}
+
+	bms := make([]bitmap.Bitmap, len(rs))
+
+	for i := range rs {
+		bit := int64(0)
+		rand.Seed(int64(c1) + time.Now().UnixNano())
+		bms[i] = New()
+
+		for j := int64(0); j < rs[i]; j++ {
+			bit += int64(rand.Intn(int(rs[i]))+1)
+			bms[i].(*Ewah).Set(bit)
+		}
+	}
+
+	bm4 := bms[0].And((bms[1:])...)
+
+	bm5 := bms[0].(*Ewah).And2(bms[1])
+	bm6 := bm5.(*Ewah).And2(bms[2])
+	bm7 := bm6.(*Ewah).And2(bms[3])
+	bm8 := bm7.(*Ewah).And2(bms[4])
+	bm9 := bm8.(*Ewah).And2(bms[5])
+
+	if !bm4.(*Ewah).Equal(bm9) {
+		fmt.Println("==============> bm4 != bm5")
+		//bm2.PrintStats(true)
+		//bm3.PrintStats(true)
+		t.Fatal("==============> bm4 != bm5")
+	}
+}
+
+func TestOrMultiple(t *testing.T) {
+	rs := []int64{10, 100, 1000, 5000, 10000, 100000}
+
+	bms := make([]bitmap.Bitmap, len(rs))
+
+	for i := range rs {
+		bit := int64(0)
+		rand.Seed(int64(c1) + time.Now().UnixNano())
+		bms[i] = New()
+
+		for j := int64(0); j < rs[i]; j++ {
+			bit += int64(rand.Intn(int(rs[i]))+1)
+			bms[i].(*Ewah).Set(bit)
+		}
+	}
+
+	bm4 := bms[0].Or((bms[1:])...)
+
+	bm5 := bms[0].(*Ewah).Or2(bms[1])
+	bm6 := bm5.(*Ewah).Or2(bms[2])
+	bm7 := bm6.(*Ewah).Or2(bms[3])
+	bm8 := bm7.(*Ewah).Or2(bms[4])
+	bm9 := bm8.(*Ewah).Or2(bms[5])
+
+	if !bm4.(*Ewah).Equal(bm9) {
+		fmt.Println("==============> bm4 != bm5")
+		//bm2.PrintStats(true)
+		//bm3.PrintStats(true)
+		t.Fatal("==============> bm4 != bm5")
+	}
+}
+
+func TestXorMultiple(t *testing.T) {
+	rs := []int64{10, 100, 1000, 5000, 10000, 100000}
+
+	bms := make([]bitmap.Bitmap, len(rs))
+
+	for i := range rs {
+		bit := int64(0)
+		rand.Seed(int64(c1) + time.Now().UnixNano())
+		bms[i] = New()
+
+		for j := int64(0); j < rs[i]; j++ {
+			bit += int64(rand.Intn(int(rs[i]))+1)
+			bms[i].(*Ewah).Set(bit)
+		}
+	}
+
+	bm4 := bms[0].Xor((bms[1:])...)
+
+	bm5 := bms[0].(*Ewah).Xor2(bms[1])
+	bm6 := bm5.(*Ewah).Xor2(bms[2])
+	bm7 := bm6.(*Ewah).Xor2(bms[3])
+	bm8 := bm7.(*Ewah).Xor2(bms[4])
+	bm9 := bm8.(*Ewah).Xor2(bms[5])
+
+	if !bm4.(*Ewah).Equal(bm9) {
+		fmt.Println("==============> bm4 != bm5")
+		//bm2.PrintStats(true)
+		//bm3.PrintStats(true)
+		t.Fatal("==============> bm4 != bm5")
+	}
+}
+
+func TestAndNotMultiple(t *testing.T) {
+	rs := []int64{10, 100, 1000, 5000, 10000, 100000}
+
+	bms := make([]bitmap.Bitmap, len(rs))
+
+	for i := range rs {
+		bit := int64(0)
+		rand.Seed(int64(c1) + time.Now().UnixNano())
+		bms[i] = New()
+
+		for j := int64(0); j < rs[i]; j++ {
+			bit += int64(rand.Intn(int(rs[i]))+1)
+			bms[i].(*Ewah).Set(bit)
+		}
+	}
+
+	bm4 := bms[0].AndNot((bms[1:])...)
+
+	bm5 := bms[0].(*Ewah).AndNot2(bms[1])
+	bm6 := bm5.(*Ewah).AndNot2(bms[2])
+	bm7 := bm6.(*Ewah).AndNot2(bms[3])
+	bm8 := bm7.(*Ewah).AndNot2(bms[4])
+	bm9 := bm8.(*Ewah).AndNot2(bms[5])
+
+	if !bm4.(*Ewah).Equal(bm9) {
+		fmt.Println("==============> bm4 != bm5")
+		//bm2.PrintStats(true)
+		//bm3.PrintStats(true)
+		t.Fatal("==============> bm4 != bm5")
+	}
+}
+
+func TestOrCompare(t *testing.T) {
 	rs := []int64{10, 100, 1000, 5000, 10000, 100000}
 
 	for h := range rs {
@@ -357,8 +472,8 @@ func TestOr2More(t *testing.T) {
 		}
 	}
 }
-*/
-func TestXor2More(t *testing.T) {
+
+func TestXorCompare(t *testing.T) {
 	rs := []int64{10, 100, 1000, 5000, 10000, 100000}
 
 	for h := range rs {
@@ -400,8 +515,8 @@ func TestXor2More(t *testing.T) {
 		}
 	}
 }
-/*
-func TestAndNot2More(t *testing.T) {
+
+func TestAndNotCompare(t *testing.T) {
 	rs := []int64{10, 100, 1000, 5000, 10000, 100000}
 
 	for h := range rs {
@@ -548,12 +663,10 @@ func TestNot2(t *testing.T) {
 		bm3.Set(bit)
 	}
 
-	fmt.Printf("************* Testing Not - bm3\n")
 	bm3.Not2()
-	bm3.PrintStats(false)
 }
 
-func TestNot2More(t *testing.T) {
+func TestNotCompare(t *testing.T) {
 	rs := []int64{10, 100, 1000, 5000, 10000, 100000}
 
 	for h := range rs {
@@ -780,7 +893,7 @@ func BenchmarkOr2(b *testing.B) {
 		}
 	}
 }
-*/
+
 func BenchmarkXor(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		if bm.Xor(bm10) == nil {

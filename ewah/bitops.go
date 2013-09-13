@@ -9,35 +9,146 @@ package ewah
 import (
 	"github.com/zhenjl/bitmap"
 	"math"
-	//"fmt"
 )
 
-func (this *Ewah) bitOp(a bitmap.Bitmap, f func(*Ewah, BitmapStorage)) bitmap.Bitmap {
-	aEwah, ok := a.(*Ewah)
+func (this *Ewah) bitOp(f func(*Ewah, BitmapStorage), a ...bitmap.Bitmap) bitmap.Bitmap {
+	n := len(a)
+	b, ok := a[0].(*Ewah)
 	if !ok {
 		return nil
 	}
 
-	container := New().(*Ewah)
-	container.reserve(int32(math.Max(float64(this.actualSizeInWords), float64(aEwah.actualSizeInWords))))
-	f(aEwah, container)
-	return container
+	ans := New().(*Ewah)
+	tmp := New().(*Ewah)
+	ans.reserve(int32(math.Max(float64(this.actualSizeInWords), float64(b.actualSizeInWords))))
+	tmp.reserve(int32(math.Max(float64(this.actualSizeInWords), float64(b.actualSizeInWords))))
+
+	this.andToContainer(b, ans)
+
+	for i := 1; i < n; i++ {
+		b, ok := a[i].(*Ewah)
+		if !ok {
+			return nil
+		}
+
+		ans.andToContainer(b, tmp)
+		tmp.Swap(ans)
+		tmp.Reset()
+	}
+
+	return ans
 }
 
-func (this *Ewah) And(a bitmap.Bitmap) bitmap.Bitmap {
-	return this.bitOp(a, this.andToContainer)
+func (this *Ewah) And(a ...bitmap.Bitmap) bitmap.Bitmap {
+	n := len(a)
+	b, ok := a[0].(*Ewah)
+	if !ok {
+		return nil
+	}
+
+	ans := New().(*Ewah)
+	tmp := New().(*Ewah)
+	ans.reserve(int32(math.Max(float64(this.actualSizeInWords), float64(b.actualSizeInWords))))
+	tmp.reserve(int32(math.Max(float64(this.actualSizeInWords), float64(b.actualSizeInWords))))
+
+	this.andToContainer(b, ans)
+
+	for i := 1; i < n; i++ {
+		b, ok := a[i].(*Ewah)
+		if !ok {
+			return nil
+		}
+
+		ans.andToContainer(b, tmp)
+		tmp.Swap(ans)
+		tmp.Reset()
+	}
+
+	return ans
 }
 
-func (this *Ewah) AndNot(a bitmap.Bitmap) bitmap.Bitmap {
-	return this.bitOp(a, this.andNotToContainer)
+func (this *Ewah) AndNot(a ...bitmap.Bitmap) bitmap.Bitmap {
+	n := len(a)
+	b, ok := a[0].(*Ewah)
+	if !ok {
+		return nil
+	}
+
+	ans := New().(*Ewah)
+	tmp := New().(*Ewah)
+	ans.reserve(int32(math.Max(float64(this.actualSizeInWords), float64(b.actualSizeInWords))))
+	tmp.reserve(int32(math.Max(float64(this.actualSizeInWords), float64(b.actualSizeInWords))))
+
+	this.andNotToContainer(b, ans)
+
+	for i := 1; i < n; i++ {
+		b, ok := a[i].(*Ewah)
+		if !ok {
+			return nil
+		}
+
+		ans.andNotToContainer(b, tmp)
+		tmp.Swap(ans)
+		tmp.Reset()
+	}
+
+	return ans
 }
 
-func (this *Ewah) Or(a bitmap.Bitmap) bitmap.Bitmap {
-	return this.bitOp(a, this.orToContainer)
+func (this *Ewah) Or(a ...bitmap.Bitmap) bitmap.Bitmap {
+	n := len(a)
+	b, ok := a[0].(*Ewah)
+	if !ok {
+		return nil
+	}
+
+	ans := New().(*Ewah)
+	tmp := New().(*Ewah)
+	ans.reserve(int32(math.Max(float64(this.actualSizeInWords), float64(b.actualSizeInWords))))
+	tmp.reserve(int32(math.Max(float64(this.actualSizeInWords), float64(b.actualSizeInWords))))
+
+	this.orToContainer(b, ans)
+
+	for i := 1; i < n; i++ {
+		b, ok := a[i].(*Ewah)
+		if !ok {
+			return nil
+		}
+
+		ans.orToContainer(b, tmp)
+		tmp.Swap(ans)
+		tmp.Reset()
+	}
+
+	return ans
 }
 
-func (this *Ewah) Xor(a bitmap.Bitmap) bitmap.Bitmap {
-	return this.bitOp(a, this.xorToContainer)
+func (this *Ewah) Xor(a ...bitmap.Bitmap) bitmap.Bitmap {
+	n := len(a)
+	b, ok := a[0].(*Ewah)
+	if !ok {
+		return nil
+	}
+
+	ans := New().(*Ewah)
+	tmp := New().(*Ewah)
+	ans.reserve(int32(math.Max(float64(this.actualSizeInWords), float64(b.actualSizeInWords))))
+	tmp.reserve(int32(math.Max(float64(this.actualSizeInWords), float64(b.actualSizeInWords))))
+
+	this.xorToContainer(b, ans)
+
+	for i := 1; i < n; i++ {
+		b, ok := a[i].(*Ewah)
+		if !ok {
+			return nil
+		}
+
+		ans.xorToContainer(b, tmp)
+		tmp.Swap(ans)
+		tmp.Reset()
+	}
+
+	return ans
 }
 
 func (this *Ewah) Not() bitmap.Bitmap {

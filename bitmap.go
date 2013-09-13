@@ -17,9 +17,9 @@ type Bitmap interface {
 
 	Cardinality() int64
 
-	And(Bitmap) Bitmap
-	Or(Bitmap) Bitmap
-	AndNot(Bitmap) Bitmap
-	Xor(Bitmap) Bitmap
+	And(...Bitmap) Bitmap
+	Or(...Bitmap) Bitmap
+	AndNot(...Bitmap) Bitmap
+	Xor(...Bitmap) Bitmap
 	Not() Bitmap
 }

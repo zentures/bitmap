@@ -174,8 +174,22 @@ func (this *Ewah) Get3(i int64) bool {
 
 	return false;
 }
+
+func (this *Ewah) bitOp2(a bitmap.Bitmap, f func(*Ewah, BitmapStorage)) bitmap.Bitmap {
+	aEwah, ok := a.(*Ewah)
+	if !ok {
+		return nil
+	}
+
+	container := New().(*Ewah)
+	container.reserve(int32(math.Max(float64(this.actualSizeInWords), float64(aEwah.actualSizeInWords))))
+	f(aEwah, container)
+	return container
+}
+
+
 func (this *Ewah) And2(a bitmap.Bitmap) bitmap.Bitmap {
-	return this.bitOp(a, this.andToContainer2)
+	return this.bitOp2(a, this.andToContainer2)
 }
 
 func (this *Ewah) andToContainer2(a *Ewah, container BitmapStorage) {
@@ -280,7 +294,7 @@ func (this *Ewah) Not2() bitmap.Bitmap {
 }
 
 func (this *Ewah) AndNot2(a bitmap.Bitmap) bitmap.Bitmap {
-	return this.bitOp(a, this.andNotToContainer2)
+	return this.bitOp2(a, this.andNotToContainer2)
 }
 
 func (this *Ewah) andNotToContainer2(a *Ewah, container BitmapStorage) {
@@ -359,7 +373,7 @@ func (this *Ewah) andNotToContainer2(a *Ewah, container BitmapStorage) {
 }
 
 func (this *Ewah) Or2(a bitmap.Bitmap) bitmap.Bitmap {
-	return this.bitOp(a, this.orToContainer2)
+	return this.bitOp2(a, this.orToContainer2)
 }
 
 func (this *Ewah) orToContainer2(a *Ewah, container BitmapStorage) {
@@ -418,7 +432,7 @@ func (this *Ewah) orToContainer2(a *Ewah, container BitmapStorage) {
 }
 
 func (this *Ewah) Xor2(a bitmap.Bitmap) bitmap.Bitmap {
-	return this.bitOp(a, this.xorToContainer2)
+	return this.bitOp2(a, this.xorToContainer2)
 }
 
 func (this *Ewah) xorToContainer2(a *Ewah, container BitmapStorage) {
