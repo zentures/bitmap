@@ -450,7 +450,8 @@ func (this *Ewah) andToContainer(a *Ewah, container BitmapStorage) {
 
 		// Now that we have gone through all the empty words, let's take care of the left over literal words
 		leftOverLiterals := int64(math.Min(float64(iCursor.rlwLiteralRemaining), float64(jCursor.rlwLiteralRemaining)))
-		//fmt.Printf("ewah.go/andToContainer2: leftOverLiterals = %d, i.rlwLiteralRemaining = %d, j.rlwLiteralRemaining = %d\n", leftOverLiterals, iCursor.rlwLiteralRemaining, jCursor.rlwLiteralRemaining)
+		//fmt.Printf("ewah.go/andToContainer2: leftOverLiterals = %d, i.rlwLiteralRemaining = %d, j.rlwLiteralRemaining = %d\n",
+		//	leftOverLiterals, iCursor.rlwLiteralRemaining, jCursor.rlwLiteralRemaining)
 
 		if leftOverLiterals > 0 {
 			// for each of the left over literals, we will AND them and put the result in the contanier

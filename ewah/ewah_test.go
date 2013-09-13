@@ -426,6 +426,7 @@ func TestNot2(t *testing.T) {
 	bm3.PrintStats(false)
 }
 */
+
 func TestNot2More(t *testing.T) {
 	rs := []int64{10, 100, 1000, 5000, 10000, 100000}
 

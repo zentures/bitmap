@@ -278,3 +278,82 @@ func (this *Ewah) Not2() bitmap.Bitmap {
 
 	return this
 }
+
+func (this *Ewah) AndNot2(a bitmap.Bitmap) bitmap.Bitmap {
+	return this.bitOp(a, this.andNotToContainer2)
+}
+
+func (this *Ewah) andNotToContainer2(a *Ewah, container BitmapStorage) {
+	i := NewEWAHIterator(this.buffer, this.actualSizeInWords)
+	j := NewEWAHIterator(a.buffer, a.actualSizeInWords)
+
+	rlwi := newBufferedRunningLengthWordIterator(i)
+	rlwj := newBufferedRunningLengthWordIterator(j)
+
+	for rlwi.size() > 0 && rlwj.size() > 0 {
+		//fmt.Printf("ewah.go/andNotToContainer: rlwi.size = %d, rlwj.size = %d\n", rlwi.size(), rlwj.size())
+		for rlwi.getRunningLength() > 0 || rlwj.getRunningLength() > 0 {
+			i_is_prey := rlwi.getRunningLength() < rlwj.getRunningLength()
+			var prey, predator *BufferedRunningLengthWordIterator
+
+			if i_is_prey {
+				prey = rlwi
+				predator = rlwj
+			} else {
+				prey = rlwj
+				predator = rlwi
+			}
+
+			//fmt.Println("ewah.go/andNotToContainer: i_is_prey =", i_is_prey)
+
+			if (predator.getRunningBit() == true && i_is_prey) || (predator.getRunningBit() == false && !i_is_prey) {
+				container.addStreamOfEmptyWords(false, predator.getRunningLength())
+				prey.discardFirstWords(predator.getRunningLength())
+				predator.discardFirstWords(predator.getRunningLength())
+			} else if i_is_prey {
+				//fmt.Println("ewah.go/andNotToContainer: predator.getRunningLength =", predator.getRunningLength())
+				index := prey.discharge(container, predator.getRunningLength())
+				container.addStreamOfEmptyWords(false, predator.getRunningLength() - index)
+				//fmt.Println("ewah.go/andNotToContainer: i_is_prey index =", index)
+				predator.discardFirstWords(predator.getRunningLength())
+			} else {
+				index := prey.dischargeNegated(container, predator.getRunningLength())
+				container.addStreamOfEmptyWords(true, predator.getRunningLength() - index)
+				predator.discardFirstWords(predator.getRunningLength())
+			}
+			//fmt.Println("----")
+		}
+
+		nbre_literal := int64(math.Min(float64(rlwi.getNumberOfLiteralWords()), float64(rlwj.getNumberOfLiteralWords())))
+		if nbre_literal > 0 {
+			for k := int32(0); k < int32(nbre_literal); k++ {
+				//fmt.Printf("ewah.go/andNotToContainer: i = %064b\n", rlwi.getLiteralWordAt(k))
+				//fmt.Printf("ewah.go/andNotToContainer: j = %064b\n", rlwj.getLiteralWordAt(k))
+				//fmt.Printf("ewah.go/andNotToContainer:^j = %064b\n", uint64(^rlwj.getLiteralWordAt(k)))
+				container.add(rlwi.getLiteralWordAt(k) &^ rlwj.getLiteralWordAt(k))
+			}
+
+			rlwi.discardFirstWords(nbre_literal)
+			rlwj.discardFirstWords(nbre_literal)
+		}
+	}
+
+	i_remains := rlwi.size() > 0
+	var remaining *BufferedRunningLengthWordIterator
+
+	if i_remains {
+		remaining = rlwi
+	} else {
+		remaining = rlwj
+	}
+
+	if i_remains {
+		remaining.dischargeContainer(container)
+	} else if this.adjustContainerSizeWhenAggregating {
+		remaining.dischargeAsEmpty(container)
+	}
+
+	if this.adjustContainerSizeWhenAggregating {
+		container.setSizeInBits(int64(math.Max(float64(this.sizeInBits), float64(a.sizeInBits))))
+	}
+}
