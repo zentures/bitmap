@@ -357,3 +357,63 @@ func (this *Ewah) andNotToContainer2(a *Ewah, container BitmapStorage) {
 		container.setSizeInBits(int64(math.Max(float64(this.sizeInBits), float64(a.sizeInBits))))
 	}
 }
+
+func (this *Ewah) Or2(a bitmap.Bitmap) bitmap.Bitmap {
+	return this.bitOp(a, this.orToContainer2)
+}
+
+func (this *Ewah) orToContainer2(a *Ewah, container BitmapStorage) {
+	i := NewEWAHIterator(a.buffer, a.actualSizeInWords)
+	j := NewEWAHIterator(this.buffer, this.actualSizeInWords)
+
+	rlwi := newBufferedRunningLengthWordIterator(i)
+	rlwj := newBufferedRunningLengthWordIterator(j)
+
+	for rlwi.size() > 0 && rlwj.size() > 0 {
+		for rlwi.getRunningLength() > 0 || rlwj.getRunningLength() > 0 {
+			i_is_prey := rlwi.getRunningLength() < rlwj.getRunningLength()
+			var prey, predator *BufferedRunningLengthWordIterator
+
+			if i_is_prey {
+				prey = rlwi
+				predator = rlwj
+			} else {
+				prey = rlwj
+				predator = rlwi
+			}
+
+			if predator.getRunningBit() == true {
+				container.addStreamOfEmptyWords(true, predator.getRunningLength())
+				prey.discardFirstWords(predator.getRunningLength())
+				predator.discardFirstWords(predator.getRunningLength())
+			} else {
+				index := prey.discharge(container, predator.getRunningLength())
+				container.addStreamOfEmptyWords(false, predator.getRunningLength() - index)
+				predator.discardFirstWords(predator.getRunningLength())
+			}
+		}
+
+		nbre_literal := int64(math.Min(float64(rlwi.getNumberOfLiteralWords()), float64(rlwj.getNumberOfLiteralWords())))
+		if nbre_literal > 0 {
+			for k := int32(0); k < int32(nbre_literal); k++ {
+				container.add(rlwi.getLiteralWordAt(k) | rlwj.getLiteralWordAt(k))
+			}
+
+			rlwi.discardFirstWords(nbre_literal)
+			rlwj.discardFirstWords(nbre_literal)
+		}
+	}
+
+	i_remains := rlwi.size() > 0
+	var remaining *BufferedRunningLengthWordIterator
+
+	if i_remains {
+		remaining = rlwi
+	} else {
+		remaining = rlwj
+	}
+
+	remaining.dischargeContainer(container)
+	container.setSizeInBits(int64(math.Max(float64(this.sizeInBits), float64(a.sizeInBits))))
+}
+

@@ -236,8 +236,9 @@ func (this *cursor) copyForwardEmpty(container BitmapStorage) int64 {
 // Copy the remaining words in the bitmap into the result container
 func (this *cursor) copyForwardRemaining(container BitmapStorage) int64 {
 	n := int64(0)
-	//fmt.Printf("cursor.go/copyForwardRemaining: n = %d, cursor = %v\n", n, this)
 	for {
+		//fmt.Printf("cursor.go/copyForwardRemaining: n = %d, cursor = %v\n", n, this)
+		//fmt.Printf("cursor.go/copyForwardRemaining: marker = %064b\n", uint64(this.buffer[this.marker]))
 		container.addStreamOfEmptyWords(this.getRunningBit(), this.rlwEmptyRemaining)
 		n += this.rlwEmptyRemaining
 
@@ -245,6 +246,7 @@ func (this *cursor) copyForwardRemaining(container BitmapStorage) int64 {
 		n += this.rlwLiteralRemaining
 
 		this.moveForward(this.rlwRemaining())
+		//fmt.Printf("cursor.go/copyForwardRemaining: after moveForward: n = %d, cursor = %v\n", n, this)
 
 		if this.end() {
 			break

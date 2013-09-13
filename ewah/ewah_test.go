@@ -271,7 +271,7 @@ func TestAndAndAnd2(t *testing.T) {
 		t.Fatalf("c2(%d) != c3(%d)\n", c2, c3)
 	}
 }
-*/
+
 func TestAnd2More(t *testing.T) {
 	rs := []int64{10, 100, 1000, 5000, 10000, 100000}
 
@@ -314,7 +314,51 @@ func TestAnd2More(t *testing.T) {
 		}
 	}
 }
+*/
 
+func TestOr2More(t *testing.T) {
+	rs := []int64{10, 100, 1000, 5000, 10000, 100000}
+
+	for h := range rs {
+		for i := range rs {
+			bit := int64(0)
+			rand.Seed(int64(c1))
+
+			bm2 := New().(*Ewah)
+
+			for j := int64(0); j < rs[i]; j++ {
+				bit += int64(rand.Intn(int(rs[h]))+1)
+				bm2.Set(bit)
+			}
+
+			for k := range rs {
+				bit2 := int64(0)
+				rand.Seed(int64(c2))
+
+				bm3 := New().(*Ewah)
+
+				for l := int64(0); l < rs[k]; l++ {
+					bit2 += int64(rand.Intn(int(rs[h]))+1)
+					bm3.Set(bit2)
+				}
+
+				bm4 := bm2.Or(bm3)
+				bm5 := bm2.Or(bm3)
+
+				if !bm4.(*Ewah).Equal(bm5) {
+					fmt.Printf("************* Testing h = %d, i = %d, k = %d\n", rs[h], rs[i], rs[k])
+					fmt.Println("==============> bm4 != bm5")
+					bm2.PrintStats(true)
+					bm3.PrintStats(true)
+					bm4.(*Ewah).PrintStats(true)
+					bm5.(*Ewah).PrintStats(true)
+					t.Fatal("==============> bm4 != bm5")
+				}
+			}
+		}
+	}
+}
+/*
 func TestAndNot2More(t *testing.T) {
 	rs := []int64{10, 100, 1000, 5000, 10000, 100000}
 
@@ -358,7 +402,6 @@ func TestAndNot2More(t *testing.T) {
 	}
 }
 
-/*
 func TestAndNot(t *testing.T) {
 	bm2 := New().(*Ewah)
 	bm3 := New().(*Ewah)
@@ -687,7 +730,6 @@ func BenchmarkNot(b *testing.B) {
 		}
 	}
 }
-*/
 
 func BenchmarkAndNot(b *testing.B) {
 	for i := 0; i < b.N; i++ {
@@ -704,4 +746,19 @@ func BenchmarkAndNot2(b *testing.B) {
 		}
 	}
 }
+*/
+func BenchmarkOr(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		if bm.Or(bm10) == nil {
+			b.Fatal("BenchmarkAnd: Problem with AndNot() at i =", i)
+		}
+	}
+}
 
+func BenchmarkOr2(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		if bm.Or2(bm10) == nil {
+			b.Fatal("BenchmarkAnd: Problem with AndNot() at i =", i)
+		}
+	}
+}
