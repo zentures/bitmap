@@ -317,21 +317,23 @@ func (this *Ewah) Xor(a bitmap.Bitmap) bitmap.Bitmap {
 }
 
 func (this *Ewah) Not() bitmap.Bitmap {
-	marker := int64(0)
-	m := newRunningLengthWord(this.buffer, marker)
+	c := newCursor(this.buffer, 0)
 
-	for marker < this.actualSizeInWords {
-		m.reset(this.buffer, marker)
-		numOfLiteralWords := int64(m.getNumberOfLiteralWords())
-		m.setRunningBit(!m.getRunningBit())
+	for c.marker < this.actualSizeInWords {
+		//fmt.Printf("ewah.go/Not2: c.marker = %d, sizeInWords = %d, literals = %d\n", c.marker, this.actualSizeInWords, c.rlwLiteralRemaining)
+		//c.reset(this.buffer, c.marker)
+		//numOfLiteralWords := int64(c.rlw.getNumberOfLiteralWords())
+		c.rlw.setRunningBit(!c.rlw.getRunningBit())
 
-		for i := int64(1); i <= numOfLiteralWords; i++ {
-			this.buffer[marker + i] = ^this.buffer[marker + i]
+		for i := int64(1); i <= c.rlwLiteralRemaining; i++ {
+			//fmt.Printf("ewah.go/Not2: i = %d, buffer before = %064b\n", i, uint64(this.buffer[c.marker+i]))
+			this.buffer[c.marker + i] = ^this.buffer[c.marker + i]
+			//fmt.Printf("ewah.go/Not2: buffer  after = %064b\n", uint64(this.buffer[c.marker+i]))
 		}
 
 		// If this is the last word in the bitmap, we may need to do some special treatment since
 		// it may not be fully populated.
-		if marker+numOfLiteralWords+1 == this.actualSizeInWords {
+		if c.marker+c.rlwLiteralRemaining+1 == this.actualSizeInWords {
 			// If the last word is fully populated, then no need to do anything
 			lastBits := this.sizeInBits % wordInBits
 			if lastBits == 0 {
@@ -341,20 +343,20 @@ func (this *Ewah) Not() bitmap.Bitmap {
 			// If there are no literal words (or all empty words) and the lastBits is not zero, this means
 			// we need to make sure we break out the last empty word, and negate the populated portion of
 			// the word
-			if m.getNumberOfLiteralWords() == 0 {
-				if m.getRunningLength() > 0 && m.getRunningBit() {
-					m.setNumberOfLiteralWords(int64(m.getNumberOfLiteralWords())-1)
+			if c.rlw.getNumberOfLiteralWords() == 0 {
+				if c.rlw.getRunningLength() > 0 && c.rlw.getRunningBit() {
+					c.rlw.setNumberOfLiteralWords(int64(c.rlw.getNumberOfLiteralWords())-1)
 					this.addLiteralWord(int64(uint64(0) >> uint64(wordInBits - lastBits)))
 				}
 
 				break
 			}
 
-			this.buffer[marker + numOfLiteralWords] &= int64(^uint64(0) >> uint64(wordInBits - lastBits))
+			this.buffer[c.marker + c.rlwLiteralRemaining] &= int64(^uint64(0) >> uint64(wordInBits - lastBits))
 			break
 		}
 
-		marker += numOfLiteralWords + 1
+		c.nextMarker()
 	}
 
 	return this

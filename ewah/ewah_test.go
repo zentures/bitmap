@@ -410,6 +410,76 @@ func TestNot(t *testing.T) {
 	}
 }
 
+func TestNot2(t *testing.T) {
+	bit := int64(0)
+	rand.Seed(int64(c1))
+
+	bm3 := New().(*Ewah)
+
+	for j := int64(0); j < 100; j++ {
+		bit += int64(rand.Intn(int(100)) + 1)
+		bm3.Set(bit)
+	}
+
+	fmt.Printf("************* Testing Not - bm3\n")
+	bm3.Not2()
+	bm3.PrintStats(false)
+}
+*/
+func TestNot2More(t *testing.T) {
+	rs := []int64{10, 100, 1000, 5000, 10000, 100000}
+
+	for h := range rs {
+		for i := range rs {
+			bit := int64(0)
+			rand.Seed(int64(c1))
+
+			bm2 := New().(*Ewah)
+			bm3 := New().(*Ewah)
+			bm4 := New().(*Ewah)
+
+			for j := int64(0); j < rs[i]; j++ {
+				bit += int64(rand.Intn(int(rs[h]))+1)
+				bm2.Set(bit)
+				bm3.Set(bit)
+				bm4.Set(bit)
+			}
+
+			bm2.Not()
+			bm3.Not2()
+
+			if !bm2.Equal(bm3) {
+				fmt.Printf("************* Testing Not h = %d, i = %d\n", rs[h], rs[i])
+				fmt.Println("==============> bm2 != bm3")
+				bm2.PrintStats(true)
+				bm3.PrintStats(true)
+				t.Fatal("==============> bm2 != bm3")
+			}
+
+			bm2.Not()
+			bm3.Not2()
+
+			if !bm2.Equal(bm4) {
+				fmt.Printf("************* Testing Not Not\n")
+				fmt.Println("==============> bm2 != bm4")
+				bm2.PrintStats(true)
+				bm3.PrintStats(true)
+				t.Fatal("==============> bm2 != bm3")
+			}
+
+			if !bm3.Equal(bm4) {
+				fmt.Printf("************* Testing Not Not\n")
+				fmt.Println("==============> bm3 != bm4")
+				bm2.PrintStats(true)
+				bm3.PrintStats(true)
+				t.Fatal("==============> bm3 != bm4")
+			}
+
+		}
+	}
+}
+/*
+
 func TestXor(t *testing.T) {
 	bm2 := New().(*Ewah)
 	bm3 := New().(*Ewah)
@@ -520,7 +590,7 @@ func BenchmarkCardinality4(b *testing.B) {
 		bm.Cardinality4()
 	}
 }
-*/
+
 func BenchmarkAnd(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		if bm.And(bm10) == nil {
@@ -532,6 +602,22 @@ func BenchmarkAnd(b *testing.B) {
 func BenchmarkAnd2(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		if bm.And2(bm10) == nil {
+			b.Fatal("BenchmarkAnd2: Problem with And() at i =", i)
+		}
+	}
+}
+*/
+func BenchmarkNot(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		if bm.Not2() == nil {
+			b.Fatal("BenchmarkAnd: Problem with And() at i =", i)
+		}
+	}
+}
+
+func BenchmarkNot2(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		if bm.Not2() == nil {
 			b.Fatal("BenchmarkAnd2: Problem with And() at i =", i)
 		}
 	}

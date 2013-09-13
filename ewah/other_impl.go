@@ -235,3 +235,46 @@ func (this *Ewah) andToContainer2(a *Ewah, container BitmapStorage) {
 	}
 }
 
+func (this *Ewah) Not2() bitmap.Bitmap {
+	marker := int64(0)
+	m := newRunningLengthWord(this.buffer, marker)
+
+	for marker < this.actualSizeInWords {
+		m.reset(this.buffer, marker)
+		numOfLiteralWords := int64(m.getNumberOfLiteralWords())
+		m.setRunningBit(!m.getRunningBit())
+
+		for i := int64(1); i <= numOfLiteralWords; i++ {
+			this.buffer[marker + i] = ^this.buffer[marker + i]
+		}
+
+		// If this is the last word in the bitmap, we may need to do some special treatment since
+		// it may not be fully populated.
+		if marker+numOfLiteralWords+1 == this.actualSizeInWords {
+			// If the last word is fully populated, then no need to do anything
+			lastBits := this.sizeInBits % wordInBits
+			if lastBits == 0 {
+				break
+			}
+
+			// If there are no literal words (or all empty words) and the lastBits is not zero, this means
+			// we need to make sure we break out the last empty word, and negate the populated portion of
+			// the word
+			if m.getNumberOfLiteralWords() == 0 {
+				if m.getRunningLength() > 0 && m.getRunningBit() {
+					m.setNumberOfLiteralWords(int64(m.getNumberOfLiteralWords())-1)
+					this.addLiteralWord(int64(uint64(0) >> uint64(wordInBits - lastBits)))
+				}
+
+				break
+			}
+
+			this.buffer[marker + numOfLiteralWords] &= int64(^uint64(0) >> uint64(wordInBits - lastBits))
+			break
+		}
+
+		marker += numOfLiteralWords + 1
+	}
+
+	return this
+}
