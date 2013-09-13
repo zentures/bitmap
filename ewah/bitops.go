@@ -335,58 +335,61 @@ func (this *Ewah) orCardinality(a *Ewah) int32 {
 }
 
 func (this *Ewah) xorToContainer(a *Ewah, container BitmapStorage) {
-	i := NewEWAHIterator(a.buffer, a.actualSizeInWords)
-	j := NewEWAHIterator(this.buffer, this.actualSizeInWords)
+	i, j := a, this
 
-	rlwi := newBufferedRunningLengthWordIterator(i)
-	rlwj := newBufferedRunningLengthWordIterator(j)
+	iCursor := newCursor(i.buffer, i.SizeInWords())
+	jCursor := newCursor(j.buffer, j.SizeInWords())
 
-	for rlwi.size() > 0 && rlwj.size() > 0 {
-		for rlwi.getRunningLength() > 0 || rlwj.getRunningLength() > 0 {
-			i_is_prey := rlwi.getRunningLength() < rlwj.getRunningLength()
-			var prey, predator *BufferedRunningLengthWordIterator
-
-			if i_is_prey {
-				prey = rlwi
-				predator = rlwj
+	// Keep going thru the words until one of the cursors have reached the end (checked > size)
+	for iCursor.rlwRemaining() > 0 && jCursor.rlwRemaining() > 0 {
+		//fmt.Println("bitops.go/orToContainer: i =", iCursor)
+		//fmt.Println("bitops.go/orToContainer: j =", jCursor)
+		// For each of the marker words, keep moving thru them until both have gone through their empty words
+		for iCursor.rlwEmptyRemaining > 0 || jCursor.rlwEmptyRemaining > 0 {
+			// Predator is the one that has more empty words. Prey is the one with less.
+			var prey, predator *cursor
+			if iCursor.rlwEmptyRemaining < jCursor.rlwEmptyRemaining {
+				prey, predator = iCursor, jCursor
 			} else {
-				prey = rlwj
-				predator = rlwi
+				prey, predator = jCursor, iCursor
 			}
 
 			if predator.getRunningBit() == false {
-				index := prey.discharge(container, predator.getRunningLength())
-				container.addStreamOfEmptyWords(false, predator.getRunningLength() - index)
-				predator.discardFirstWords(predator.getRunningLength())
+				index := prey.copyForward(container, predator.rlwEmptyRemaining, false)
+				container.addStreamOfEmptyWords(false, predator.rlwEmptyRemaining - index)
+				predator.moveForward(predator.rlwEmptyRemaining)
 			} else {
-				index := prey.dischargeNegated(container, predator.getRunningLength())
-				container.addStreamOfEmptyWords(true, predator.getRunningLength() - index)
-				predator.discardFirstWords(predator.getRunningLength())
+				index := prey.copyForward(container, predator.rlwEmptyRemaining, true)
+				container.addStreamOfEmptyWords(true, predator.rlwEmptyRemaining - index)
+				predator.moveForward(predator.rlwEmptyRemaining)
 			}
 		}
 
-		nbre_literal := int64(math.Min(float64(rlwi.getNumberOfLiteralWords()), float64(rlwj.getNumberOfLiteralWords())))
-		if nbre_literal > 0 {
-			for k := int32(0); k < int32(nbre_literal); k++ {
-				container.add(rlwi.getLiteralWordAt(k) ^ rlwj.getLiteralWordAt(k))
+		// Now that we have gone through all the empty words, let's take care of the left over literal words
+		leftOverLiterals := int64(math.Min(float64(iCursor.rlwLiteralRemaining), float64(jCursor.rlwLiteralRemaining)))
+
+		if leftOverLiterals > 0 {
+			for k := int64(0); k < leftOverLiterals; k++ {
+				container.add(iCursor.getLiteralWordAt(k) ^ jCursor.getLiteralWordAt(k))
 			}
 
-			rlwi.discardFirstWords(nbre_literal)
-			rlwj.discardFirstWords(nbre_literal)
+			// Move the cursors forward
+			iCursor.moveForward(leftOverLiterals)
+			jCursor.moveForward(leftOverLiterals)
 		}
 	}
 
-	i_remains := rlwi.size() > 0
-	var remaining *BufferedRunningLengthWordIterator
+	iRemains := iCursor.rlwRemaining() > 0
+	var remaining *cursor
 
-	if i_remains {
-		remaining = rlwi
+	if iRemains {
+		remaining = iCursor
 	} else {
-		remaining = rlwj
+		remaining = jCursor
 	}
 
-	remaining.dischargeContainer(container)
-	container.setSizeInBits(int64(math.Max(float64(this.sizeInBits), float64(a.sizeInBits))))
+	remaining.copyForwardRemaining(container)
+	container.setSizeInBits(int64(math.Max(float64(i.Size()), float64(j.Size()))))
 }
 
 func (this *Ewah) xorCardinality(a *Ewah) int32 {
