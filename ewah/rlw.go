@@ -10,17 +10,6 @@ import (
 	"fmt"
 )
 
-const (
-	RunningLengthBits int32 = 32
-	LiteralBits int32 = 64 - 1 - RunningLengthBits
-	LargestLiteralCount int32 = int32((1 << uint32(LiteralBits)) - 1)
-	LargestRunningLengthCount int64 = (int64(1) << uint32(RunningLengthBits)) - 1
-	RunningLengthPlusRunningBit int64 = (int64(1) << uint32(RunningLengthBits + 1)) - 1
-	ShiftedLargestRunningLengthCount int64 = LargestRunningLengthCount << 1
-	NotRunningLengthPlusRunningBit int64 = ^RunningLengthPlusRunningBit
-	NotShiftedLargestRunningLengthCount int64 = ^ShiftedLargestRunningLengthCount
-)
-
 type runningLengthWord struct {
 	// m is the pointer to the marker word in the buffer
 	m *int64

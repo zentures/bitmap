@@ -9,6 +9,7 @@ package ewah
 import (
 	"math"
 	"fmt"
+	"errors"
 )
 
 // cursor is a struct that keeps track of the last marker checked.
@@ -30,7 +31,7 @@ type cursor struct {
 	checked int64
 
 	// rlw is the current running length word, basically buffer[marker]
-	rlw *runningLengthWord
+	//rlw *runningLengthWord
 
 	// rlwEmptyRemaining is the number of empty words remaining (unchecked) for this running length (marker) word
 	rlwEmptyRemaining int64
@@ -59,21 +60,58 @@ func (this *cursor) reset(a []int64, s int64) {
 	this.marker = 0
 	this.checked = 0
 	this.pointer = 0
-	this.rlw = newRunningLengthWord(a, 0)
+	//this.rlw = newRunningLengthWord(a, 0)
 	this.rlwEmptyRemaining = this.getRunningLength()
 	this.rlwLiteralRemaining = int64(this.getNumberOfLiteralWords())
 	this.rlwLiteralChecked = 0
 }
 
-func (this *cursor) nextMarker() {
-	//fmt.Println("cursor.go/nextMarker")
-	this.marker += int64(this.getNumberOfLiteralWords())+1
+func (this *cursor) resetMarker(a []int64, s int64, m int64) {
+	this.buffer = a
+	this.bsize = s
+	this.marker = m
 
-	this.rlw.reset(this.buffer, this.marker)
+	// WARNING: this might cause bugs in the future. Once you reset the marker, we can no longer treat
+	// the number of words checked as valid since we really don't know how many words there were before
+	this.checked = 0
+
+	this.pointer = 0
+	//this.rlw = newRunningLengthWord(a, 0)
 	this.rlwEmptyRemaining = this.getRunningLength()
 	this.rlwLiteralRemaining = int64(this.getNumberOfLiteralWords())
 	this.rlwLiteralChecked = 0
-	this.pointer += 1
+}
+
+func (this *cursor) nextMarker() error {
+	//fmt.Println("cursor.go/nextMarker")
+	this.marker += int64(this.getNumberOfLiteralWords())+1
+	this.pointer = this.marker
+	if this.end() {
+		return errors.New("cursor.go/nextMarker: No more markers in this buffer")
+	}
+
+	//fmt.Printf("cursor.go/nextMarker: marker = %064b\n", uint64(this.buffer[this.marker]))
+
+	//this.rlw.reset(this.buffer, this.marker)
+	this.rlwEmptyRemaining = this.getRunningLength()
+	this.rlwLiteralRemaining = this.getNumberOfLiteralWords()
+	this.rlwLiteralChecked = 0
+
+	//fmt.Printf("cursor.go/nextMarker: cursor = %v\n", this)
+
+	return nil
+}
+
+func (this *cursor) rlwRemaining() int64 {
+	return this.rlwEmptyRemaining + this.rlwLiteralRemaining
+}
+
+func (this *cursor) end() bool {
+	if this.pointer+1 >= this.bsize {
+		return true
+	}
+
+	return false
 }
 
 // moveForward moves the cursor forward by X words, effectively discarding them
@@ -116,15 +154,17 @@ func (this *cursor) moveForward(x int64) int64 {
 
 		// If we have exhausted the current marker word, or if we still haven't moved forward enough,
 		// then we should go to the next marker and continue from there
-		if x > 0 || (this.rlwEmptyRemaining == 0 && this.rlwLiteralRemaining == 0) {
+		if x > 0 || this.rlwRemaining() == 0 {
 			// If we are at the end then break
 			//fmt.Printf("cursor.go/moveForward: marker = %d, literalWords = %d\n", this.marker, this.getNumberOfLiteralWords())
-			if this.pointer == this.bsize-1 {
+			if this.end() {
 				break
 			}
 
 			// Otherwise we go to the next marker word and start the process again
-			this.nextMarker()
+			if this.nextMarker() != nil {
+				break
+			}
 		}
 	}
 
@@ -179,26 +219,48 @@ func (this *cursor) copyForward(container BitmapStorage, max int64, negated bool
 	return index
 }
 
-func (this *cursor) getLiteralWordAt(k int64) int64 {
-	n := this.marker + int64(this.getNumberOfLiteralWords()) - this.rlwLiteralRemaining + 1 + k
-	//fmt.Printf("cursor.go/getLiteralWordAt: %d %064b\n", this.buffer[n], this.buffer[n])
-	//fmt.Printf("cursor.go/getLiteralWordAt: cursor = %v\n", this)
-	return this.buffer[n]
-}
-
-func (this *cursor) copyEmptyForward(container BitmapStorage) int64 {
+func (this *cursor) copyForwardEmpty(container BitmapStorage) int64 {
 	n := int64(0)
-	//fmt.Printf("ewah.go/copyEmptyForward: bsize = %d, pointer = %d cursor = %v\n", this.bsize, this.pointer, this)
-	s := this.rlwEmptyRemaining + this.rlwLiteralRemaining
-	for s > 0 {
+	//fmt.Printf("cursor.go/copyEmptyForward: bsize = %d, pointer = %d cursor = %v\n", this.bsize, this.pointer, this)
+
+	for s := this.rlwRemaining(); s > 0; s = this.rlwRemaining() {
 		//fmt.Println("cursor.go/copyEmptyForward: s =", s, "cursor =", this)
 		container.addStreamOfEmptyWords(false, s)
 		this.moveForward(s)
 		n += s
-		s = this.rlwEmptyRemaining + this.rlwLiteralRemaining
 	}
 
 	return n
+}
+
+// Copy the remaining words in the bitmap into the result container
+func (this *cursor) copyForwardRemaining(container BitmapStorage) int64 {
+	n := int64(0)
+	//fmt.Printf("cursor.go/copyForwardRemaining: n = %d, cursor = %v\n", n, this)
+	for {
+		container.addStreamOfEmptyWords(this.getRunningBit(), this.rlwEmptyRemaining)
+		n += this.rlwEmptyRemaining
+
+		container.addStreamOfLiteralWords(this.buffer, int32(this.pointer)+1, int32(this.rlwLiteralRemaining))
+		n += this.rlwLiteralRemaining
+
+		this.moveForward(this.rlwRemaining())
+
+		if this.end() {
+			break
+		}
+	}
+
+	return n
+}
+
+func (this *cursor) getLiteralWordAt(k int64) int64 {
+	n := this.marker + int64(this.getNumberOfLiteralWords()) - this.rlwLiteralRemaining + 1 + k
+	if n >= this.bsize {
+		fmt.Printf("cursor.go/getLiteralWordAt: ERROR cursor = %v\n", this)
+	}
+	//fmt.Printf("cursor.go/getLiteralWordAt: k = %d, n = %d, %064b\n", k, n, uint64(this.buffer[n]))
+	return this.buffer[n]
 }
 
 func (this *cursor) String() string {
