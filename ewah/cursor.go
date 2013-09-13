@@ -60,18 +60,18 @@ func (this *cursor) reset(a []int64, s int64) {
 	this.checked = 0
 	this.pointer = 0
 	this.rlw = newRunningLengthWord(a, 0)
-	this.rlwEmptyRemaining = this.rlw.getRunningLength()
-	this.rlwLiteralRemaining = int64(this.rlw.getNumberOfLiteralWords())
+	this.rlwEmptyRemaining = this.getRunningLength()
+	this.rlwLiteralRemaining = int64(this.getNumberOfLiteralWords())
 	this.rlwLiteralChecked = 0
 }
 
 func (this *cursor) nextMarker() {
 	//fmt.Println("cursor.go/nextMarker")
-	this.marker += int64(this.rlw.getNumberOfLiteralWords())+1
+	this.marker += int64(this.getNumberOfLiteralWords())+1
 
 	this.rlw.reset(this.buffer, this.marker)
-	this.rlwEmptyRemaining = this.rlw.getRunningLength()
-	this.rlwLiteralRemaining = int64(this.rlw.getNumberOfLiteralWords())
+	this.rlwEmptyRemaining = this.getRunningLength()
+	this.rlwLiteralRemaining = int64(this.getNumberOfLiteralWords())
 	this.rlwLiteralChecked = 0
 	this.pointer += 1
 }
@@ -102,7 +102,7 @@ func (this *cursor) moveForward(x int64) int64 {
 		// Basically we are moving forward "n" words, which is the minimum of x or numOfLiteralWords
 		// If x is greater, then we just move forward and discard all the literal words.
 		// If we have more literal words, then we just move forward x words
-		literalRemaining := int64(this.rlw.getNumberOfLiteralWords()) - this.rlwLiteralChecked
+		literalRemaining := int64(this.getNumberOfLiteralWords()) - this.rlwLiteralChecked
 		n := int64(math.Min(float64(x), float64(literalRemaining)))
 		//fmt.Printf("cursor.go/moveForward: literalRemaining = %d, n = %d, cursor = %v\n", literalRemaining, n, this)
 		this.rlwLiteralChecked += n
@@ -118,7 +118,7 @@ func (this *cursor) moveForward(x int64) int64 {
 		// then we should go to the next marker and continue from there
 		if x > 0 || (this.rlwEmptyRemaining == 0 && this.rlwLiteralRemaining == 0) {
 			// If we are at the end then break
-			//fmt.Printf("cursor.go/moveForward: marker = %d, literalWords = %d\n", this.marker, this.rlw.getNumberOfLiteralWords())
+			//fmt.Printf("cursor.go/moveForward: marker = %d, literalWords = %d\n", this.marker, this.getNumberOfLiteralWords())
 			if this.pointer == this.bsize-1 {
 				break
 			}
@@ -149,7 +149,7 @@ func (this *cursor) copyForward(container BitmapStorage, max int64, negated bool
 		}
 
 		// Copy the words into the result set with the same 0 or 1 setting
-		container.addStreamOfEmptyWords(this.rlw.getRunningBit(), pl)
+		container.addStreamOfEmptyWords(this.getRunningBit(), pl)
 
 		// Update the index to reflect the number of words copied
 		index += pl
@@ -162,7 +162,7 @@ func (this *cursor) copyForward(container BitmapStorage, max int64, negated bool
 		}
 
 		// Copy the literal words into the container, starting at the next unchecked position
-		start := this.marker + int64(this.rlw.getNumberOfLiteralWords()) - this.rlwLiteralRemaining + 1
+		start := this.marker + int64(this.getNumberOfLiteralWords()) - this.rlwLiteralRemaining + 1
 		if !negated {
 			container.addStreamOfLiteralWords(this.buffer, int32(start), int32(pd))
 		} else {
@@ -180,7 +180,7 @@ func (this *cursor) copyForward(container BitmapStorage, max int64, negated bool
 }
 
 func (this *cursor) getLiteralWordAt(k int64) int64 {
-	n := this.marker + int64(this.rlw.getNumberOfLiteralWords()) - this.rlwLiteralRemaining + 1 + k
+	n := this.marker + int64(this.getNumberOfLiteralWords()) - this.rlwLiteralRemaining + 1 + k
 	//fmt.Printf("cursor.go/getLiteralWordAt: %d %064b\n", this.buffer[n], this.buffer[n])
 	//fmt.Printf("cursor.go/getLiteralWordAt: cursor = %v\n", this)
 	return this.buffer[n]
