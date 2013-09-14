@@ -9,13 +9,14 @@ package bitset
 import (
 	"testing"
 	"math/rand"
+	"github.com/zhenjl/bitmap"
 )
 
 const (
 	c1 uint32 = 0xcc9e2d51
 	c2 uint32 = 0x1b873593
 )
-
+/*
 var (
 	nums, nums10 []int64
 	bm, bm10 *Bitset
@@ -102,7 +103,7 @@ func TestGet(t *testing.T) {
 	//bm.PrintStats(false)
 }
 
-/*
+
 func TestSwap(t *testing.T) {
 	bm2 := New().(*Bitset)
 	bm3 := New().(*Bitset)
@@ -144,7 +145,7 @@ func TestSwap(t *testing.T) {
 		}
 	}
 }
-*/
+
 
 func TestClone(t *testing.T) {
 	bm2 := bm.Clone()
@@ -157,7 +158,7 @@ func TestClone(t *testing.T) {
 	//bm.PrintStats(false)
 }
 
-/*
+
 func TestCopy(t *testing.T) {
 	bm2 := New().(*Bitset)
 	bm2.Copy(bm)
@@ -169,7 +170,7 @@ func TestCopy(t *testing.T) {
 	}
 	//bm.PrintStats(false)
 }
-*/
+
 
 func TestAnd(t *testing.T) {
 	bm2 := New().(*Bitset)
@@ -395,3 +396,49 @@ func BenchmarkNot(b *testing.B) {
 		}
 	}
 }
+*/
+// f is the function to call, like And, Or, Xor, AndNot
+// b1 is the number of bits for the first bitmap
+// b2 is the number of bits for the second bitmap
+// s1 is the sparsity of the first bitmap
+// s2 is the sparsity of the second bitmap
+func benchmarkDifferentCombinations(b *testing.B, op string, b1, b2 int, s1, s2 int) {
+	m1 := New().(*Bitset)
+	m2 := New().(*Bitset)
+
+	bit := int64(0)
+	rand.Seed(int64(c1))
+	for i := 0; i < b1; i++ {
+		bit += int64(rand.Intn(s1)+1)
+		m1.Set(bit)
+	}
+
+	bit = 0
+	rand.Seed(int64(c2))
+	for i := 0; i < b2; i++ {
+		bit += int64(rand.Intn(s1)+1)
+		m2.Set(bit)
+	}
+
+	var f func(...bitmap.Bitmap) bitmap.Bitmap
+	switch op {
+	case "and":
+		f = m1.And
+	case "or":
+		f = m1.Or
+	case "andnot":
+		f = m1.AndNot
+	case "xor":
+		f = m1.Xor
+	default:
+		return
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if f(m2) == nil {
+			b.Fatal("Problem with %s benchmark at i =", op, i)
+		}
+	}
+}
+
