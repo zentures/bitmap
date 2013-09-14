@@ -9,8 +9,8 @@ package ewah
 import (
 	"testing"
 	"math/rand"
-	"fmt"
-	"time"
+	//"fmt"
+	//"time"
 	"github.com/zhenjl/bitmap"
 )
 
@@ -20,6 +20,7 @@ const (
 
 	count int = 10000
 )
+/*
 
 var (
 	nums, nums10 []int64
@@ -908,4 +909,94 @@ func BenchmarkXor2(b *testing.B) {
 			b.Fatal("BenchmarkAnd: Problem with Xor2() at i =", i)
 		}
 	}
+}
+*/
+
+// f is the function to call, like And, Or, Xor, AndNot
+// b1 is the number of bits for the first bitmap
+// b2 is the number of bits for the second bitmap
+// s1 is the sparsity of the first bitmap
+// s2 is the sparsity of the second bitmap
+func benchmarkDifferentCombinations(b *testing.B, op string, b1, b2 int, s1, s2 int) {
+	m1 := New().(*Ewah)
+	m2 := New().(*Ewah)
+
+	bit := int64(0)
+	rand.Seed(int64(c1))
+	for i := 0; i < b1; i++ {
+		bit += int64(rand.Intn(s1)+1)
+		m1.Set(bit)
+	}
+
+	bit = 0
+	rand.Seed(int64(c2))
+	for i := 0; i < b2; i++ {
+		bit += int64(rand.Intn(s1)+1)
+		m2.Set(bit)
+	}
+
+	var f func(...bitmap.Bitmap) bitmap.Bitmap
+	switch op {
+	case "and":
+		f = m1.And
+	case "or":
+		f = m1.Or
+	case "andnot":
+		f = m1.AndNot
+	case "xor":
+		f = m1.Xor
+	default:
+		return
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if f(m2) == nil {
+			b.Fatal("Problem with %s benchmark at i =", op, i)
+		}
+	}
+}
+
+func benchmarkDifferentCombinations2(b *testing.B, op string, b1, b2 int, s1, s2 int) {
+	m1 := New().(*Ewah)
+	m2 := New().(*Ewah)
+
+	bit := int64(0)
+	rand.Seed(int64(c1))
+	for i := 0; i < b1; i++ {
+		bit += int64(rand.Intn(s1)+1)
+		m1.Set(bit)
+	}
+
+	bit = 0
+	rand.Seed(int64(c2))
+	for i := 0; i < b2; i++ {
+		bit += int64(rand.Intn(s1)+1)
+		m2.Set(bit)
+	}
+
+	var f func(bitmap.Bitmap) bitmap.Bitmap
+	switch op {
+	case "and":
+		f = m1.And2
+	case "or":
+		f = m1.Or2
+	case "andnot":
+		f = m1.AndNot2
+	case "xor":
+		f = m1.Xor2
+	default:
+		return
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if f(m2) == nil {
+			b.Fatal("Problem with %s benchmark at i =", op, i)
+		}
+	}
+}
+
+func Benchmark____And_1000_1000_10_10(b *testing.B) {
+	benchmarkDifferentCombinations(b, "and", 1000, 1000, 10, 10)
 }
