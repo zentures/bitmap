@@ -301,9 +301,7 @@ func (this *Ewah) Cardinality() int64 {
 }
 
 func (this *Ewah) PrintStats(details bool) {
-	fmt.Println("actualSizeInWords =", this.actualSizeInWords, "words,", this.actualSizeInWords*wordInBits, "bits")
-	fmt.Println("actualSizeInBits =", this.sizeInBits)
-	fmt.Println("cardinality =", this.Cardinality())
+	fmt.Printf("actualSizeInWords = %d, actualSizeInBits = %d, cardinality = %d", this.SizeInWords(), this.Size(), this.Cardinality())
 
 	if details {
 		this.printDetails()

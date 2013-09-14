@@ -772,6 +772,23 @@ func BenchmarkGet(b *testing.B) {
 	}
 }
 
+func BenchmarkGet1(b *testing.B) {
+	//fmt.Printf("BenchmarkSetAndGet %d bits\n", b.N)
+	failed := 0
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		if ! bm.Get1(nums[i%count]) {
+			failed += 1
+		}
+	}
+
+	b.StopTimer()
+	if failed > 0 {
+		b.Fatal("Test failed with", failed, "bits")
+	}
+}
+
 func BenchmarkGet2(b *testing.B) {
 	//fmt.Printf("BenchmarkSetAndGet2 %d bits\n", b.N)
 	failed := 0
@@ -991,6 +1008,46 @@ func benchmarkDifferentCombinations2(b *testing.B, op string, b1, b2 int, s1, s2
 	for i := 0; i < b.N; i++ {
 		if f(m2) == nil {
 			b.Fatal("Problem with %s benchmark at i =", op, i)
+		}
+	}
+}
+
+func testGenerateData(t *testing.T) {
+	is := []int{100, 10000, 1000000}
+	js := []int{100, 10000, 1000000}
+	ks := []int{3, 30, 300, 3000, 30000}
+	ls := []int{3, 30, 300, 3000, 30000}
+
+	m1 := New().(*Ewah)
+	m2 := New().(*Ewah)
+
+	for i := range is {
+		for j := range js {
+			for k := range ks {
+				for l := range ls {
+					bit := int64(0)
+					rand.Seed(int64(c1))
+					for a := 0; a < is[i]; a++ {
+						bit += int64(rand.Intn(ks[k])+1)
+						m1.Set(bit)
+					}
+
+					bit = 0
+					rand.Seed(int64(c2))
+					for b := 0; b < js[j]; b++ {
+						bit += int64(rand.Intn(ls[l])+1)
+						m2.Set(bit)
+					}
+
+					fmt.Printf("%d %d %d %d %d %d %.2f%% %d %d %d %.2f%% %d\n",
+						is[i], js[j], ks[k], ls[l],
+						m1.Size(), m1.SizeInWords(), (1-float64(m1.SizeInWords()*wordInBits)/float64(m1.Size()))*100, m1.Cardinality(),
+						m2.Size(), m2.SizeInWords(), (1-float64(m2.SizeInWords()*wordInBits)/float64(m2.Size()))*100, m2.Cardinality())
+
+					m1.Reset()
+					m2.Reset()
+				}
+			}
 		}
 	}
 }
