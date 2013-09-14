@@ -11,34 +11,6 @@ import (
 	"math"
 )
 
-func (this *Ewah) bitOp(f func(*Ewah, BitmapStorage), a ...bitmap.Bitmap) bitmap.Bitmap {
-	n := len(a)
-	b, ok := a[0].(*Ewah)
-	if !ok {
-		return nil
-	}
-
-	ans := New().(*Ewah)
-	tmp := New().(*Ewah)
-	ans.reserve(int32(math.Max(float64(this.actualSizeInWords), float64(b.actualSizeInWords))))
-	tmp.reserve(int32(math.Max(float64(this.actualSizeInWords), float64(b.actualSizeInWords))))
-
-	this.andToContainer(b, ans)
-
-	for i := 1; i < n; i++ {
-		b, ok := a[i].(*Ewah)
-		if !ok {
-			return nil
-		}
-
-		ans.andToContainer(b, tmp)
-		tmp.Swap(ans)
-		tmp.Reset()
-	}
-
-	return ans
-}
-
 func (this *Ewah) And(a ...bitmap.Bitmap) bitmap.Bitmap {
 	n := len(a)
 	b, ok := a[0].(*Ewah)

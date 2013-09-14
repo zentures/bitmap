@@ -994,7 +994,3 @@ func benchmarkDifferentCombinations2(b *testing.B, op string, b1, b2 int, s1, s2
 		}
 	}
 }
-
-func Benchmark____And_1000_1000_10_10(b *testing.B) {
-	benchmarkDifferentCombinations(b, "and", 1000, 1000, 10, 10)
-}
