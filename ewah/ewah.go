@@ -50,7 +50,7 @@ type Ewah struct {
 
 	// The current (last) running length word
 	//rlw *runningLengthWord
-	rlwCursor *cursor
+	setCursor *cursor
 }
 
 var _ bitmap.Bitmap = (*Ewah)(nil)
@@ -108,8 +108,8 @@ func (this *Ewah) Set(i int64) bitmap.Bitmap {
 	}
 
 	// Now we know dist == 0 since it can't be < 0 (can't set a bit past the current active bit)
-	if this.rlwCursor.getNumberOfLiteralWords() == 0 {
-		this.rlwCursor.setRunningLength(this.rlwCursor.getRunningLength() - 1)
+	if this.setCursor.getNumberOfLiteralWords() == 0 {
+		this.setCursor.setRunningLength(this.setCursor.getRunningLength() - 1)
 		this.addLiteralWord(1 << uint64(i % wordInBits))
 		//fmt.Println("ewah.go/Set: after addLiteralWord inside numOfLiteralWords == 0")
 		return this
@@ -119,7 +119,7 @@ func (this *Ewah) Set(i int64) bitmap.Bitmap {
 	if this.buffer[this.actualSizeInWords - 1] == ^0 {
 		this.buffer[this.actualSizeInWords - 1] = 0
 		this.actualSizeInWords -= 1
-		this.rlwCursor.setNumberOfLiteralWords(int64(this.rlwCursor.getNumberOfLiteralWords()) - 1)
+		this.setCursor.setNumberOfLiteralWords(int64(this.setCursor.getNumberOfLiteralWords()) - 1)
 		this.addEmptyWord(true)
 		//fmt.Println("ewah.go/Set: after addEmptyWord")
 	}
@@ -184,7 +184,7 @@ func (this *Ewah) Get(i int64) bool {
 
 func (this *Ewah) Swap(other *Ewah) bitmap.Bitmap {
 	this.buffer, other.buffer = other.buffer, this.buffer
-	this.rlwCursor, other.rlwCursor = other.rlwCursor, this.rlwCursor
+	this.setCursor, other.setCursor = other.setCursor, this.setCursor
 	this.actualSizeInWords, other.actualSizeInWords = other.actualSizeInWords, this.actualSizeInWords
 	this.sizeInBits, other.sizeInBits = other.sizeInBits, this.sizeInBits
 
@@ -217,10 +217,10 @@ func (this *Ewah) Reset() {
 		this.buffer[0] = 0
 	}
 
-	if this.rlwCursor == nil {
-		this.rlwCursor = newCursor(this.buffer, this.actualSizeInWords)
+	if this.setCursor == nil {
+		this.setCursor = newCursor(this.buffer, this.actualSizeInWords)
 	} else {
-		this.rlwCursor.reset(this.buffer, this.actualSizeInWords)
+		this.setCursor.reset(this.buffer, this.actualSizeInWords)
 	}
 
 	if this.getCursor == nil {
@@ -241,7 +241,7 @@ func (this *Ewah) Clone() bitmap.Bitmap {
 	copy(c.buffer, this.buffer)
 	c.actualSizeInWords = this.actualSizeInWords
 	c.sizeInBits = this.sizeInBits
-	c.rlwCursor.resetMarker(c.buffer, c.actualSizeInWords, this.rlwCursor.marker)
+	c.setCursor.resetMarker(c.buffer, c.actualSizeInWords, this.setCursor.marker)
 
 	return c
 }
@@ -252,7 +252,7 @@ func (this *Ewah) Copy(other bitmap.Bitmap) bitmap.Bitmap {
 	copy(this.buffer, o.buffer)
 	this.actualSizeInWords = o.SizeInWords()
 	this.sizeInBits = o.Size()
-	this.rlwCursor.resetMarker(this.buffer, this.actualSizeInWords, o.rlwCursor.marker)
+	this.setCursor.resetMarker(this.buffer, this.actualSizeInWords, o.setCursor.marker)
 
 	return this
 }
@@ -343,37 +343,37 @@ func (this *Ewah) addSignificantBits(newdata int64, bitsthatmatter int64) {
 
 // addEmptyWord adds an empty word of 1's or 0's to the bitmap. true: newdata==0; false: newdata== ~0
 func (this *Ewah) addEmptyWord(v bool) {
-	noLiteralWord := this.rlwCursor.getNumberOfLiteralWords() == 0
-	runlen := this.rlwCursor.getRunningLength()
+	noLiteralWord := this.setCursor.getNumberOfLiteralWords() == 0
+	runlen := this.setCursor.getRunningLength()
 
 	if noLiteralWord && runlen == 0 {
-		this.rlwCursor.setRunningBit(v)
+		this.setCursor.setRunningBit(v)
 	}
 
-	if noLiteralWord && this.rlwCursor.getRunningBit() == v && runlen < LargestRunningLengthCount {
-		this.rlwCursor.setRunningLength(runlen+1)
+	if noLiteralWord && this.setCursor.getRunningBit() == v && runlen < LargestRunningLengthCount {
+		this.setCursor.setRunningLength(runlen+1)
 		return
 	}
 
 	this.pushBack(0)
-	this.rlwCursor.resetMarker(this.buffer, this.actualSizeInWords, this.actualSizeInWords-1)
-	this.rlwCursor.setRunningBit(v)
-	this.rlwCursor.setRunningLength(1)
+	this.setCursor.resetMarker(this.buffer, this.actualSizeInWords, this.actualSizeInWords-1)
+	this.setCursor.setRunningBit(v)
+	this.setCursor.setRunningLength(1)
 }
 
 // addLiteralWord adds a literal word to the bitmap.
 func (this *Ewah) addLiteralWord(newdata int64) {
 	//fmt.Printf("ewah.go/addLiteralWord: newdata = %064b\n", newdata)
-	numberSoFar := this.rlwCursor.getNumberOfLiteralWords()
+	numberSoFar := this.setCursor.getNumberOfLiteralWords()
 	//fmt.Printf("ewah.go/addLiteralWord: numberSoFar = %d\n", numberSoFar)
 	if numberSoFar >= LargestLiteralCount {
 		this.pushBack(0)
-		this.rlwCursor.resetMarker(this.buffer, this.actualSizeInWords, this.actualSizeInWords-1)
-		this.rlwCursor.setNumberOfLiteralWords(1)
+		this.setCursor.resetMarker(this.buffer, this.actualSizeInWords, this.actualSizeInWords-1)
+		this.setCursor.setNumberOfLiteralWords(1)
 		this.pushBack(newdata)
 	}
-	this.rlwCursor.setNumberOfLiteralWords(numberSoFar+1)
-	//fmt.Printf("ewah.go/addLiteralWord: getNumberOfLiteralWords = %d\n", this.rlwCursor.getNumberOfLiteralWords())
+	this.setCursor.setNumberOfLiteralWords(numberSoFar+1)
+	//fmt.Printf("ewah.go/addLiteralWord: getNumberOfLiteralWords = %d\n", this.setCursor.getNumberOfLiteralWords())
 	this.pushBack(newdata)
 }
 
@@ -382,10 +382,10 @@ func (this *Ewah) addStreamOfLiteralWords(data []int64, start, number int32) {
 	leftOverNumber := int64(number)
 
 	for leftOverNumber > 0 {
-		numberOfLiteralWords := this.rlwCursor.getNumberOfLiteralWords()
+		numberOfLiteralWords := this.setCursor.getNumberOfLiteralWords()
 		whatWeCanAdd := int64(math.Min(float64(number), float64(LargestLiteralCount - numberOfLiteralWords)))
 
-		this.rlwCursor.setNumberOfLiteralWords(numberOfLiteralWords + whatWeCanAdd)
+		this.setCursor.setNumberOfLiteralWords(numberOfLiteralWords + whatWeCanAdd)
 		leftOverNumber -= whatWeCanAdd
 
 		//fmt.Printf("ewah.go/addStreamOfLiteralWords: #ofLiteral = %d, leftOver = %d, whatWeCanAdd = %d\n", numberOfLiteralWords, leftOverNumber, whatWeCanAdd)
@@ -394,7 +394,7 @@ func (this *Ewah) addStreamOfLiteralWords(data []int64, start, number int32) {
 
 		if leftOverNumber > 0 {
 			this.pushBack(0)
-			this.rlwCursor.resetMarker(this.buffer, this.actualSizeInWords, this.actualSizeInWords-1)
+			this.setCursor.resetMarker(this.buffer, this.actualSizeInWords, this.actualSizeInWords-1)
 		}
 	}
 
@@ -409,40 +409,40 @@ func (this *Ewah) addStreamOfEmptyWords(v bool, number int64) {
 
 	this.sizeInBits += number * wordInBits
 
-	if this.rlwCursor.getRunningBit() != v && this.rlwCursor.size() == 0 {
-		this.rlwCursor.setRunningBit(v)
-	} else if this.rlwCursor.getNumberOfLiteralWords() != 0 || this.rlwCursor.getRunningBit() != v {
+	if this.setCursor.getRunningBit() != v && this.setCursor.size() == 0 {
+		this.setCursor.setRunningBit(v)
+	} else if this.setCursor.getNumberOfLiteralWords() != 0 || this.setCursor.getRunningBit() != v {
 		this.pushBack(0)
-		this.rlwCursor.resetMarker(this.buffer, this.actualSizeInWords, this.actualSizeInWords-1)
+		this.setCursor.resetMarker(this.buffer, this.actualSizeInWords, this.actualSizeInWords-1)
 		if v {
-			this.rlwCursor.setRunningBit(v)
+			this.setCursor.setRunningBit(v)
 		}
 	}
 
-	runlen := this.rlwCursor.getRunningLength()
+	runlen := this.setCursor.getRunningLength()
 	whatWeCanAdd := int64(math.Min(float64(number), float64(LargestLiteralCount - runlen)))
 
-	this.rlwCursor.setRunningLength(runlen + whatWeCanAdd)
+	this.setCursor.setRunningLength(runlen + whatWeCanAdd)
 	number -= whatWeCanAdd
 
 	for number >= LargestRunningLengthCount {
 		this.pushBack(0)
-		this.rlwCursor.resetMarker(this.buffer, this.actualSizeInWords, this.actualSizeInWords-1)
+		this.setCursor.resetMarker(this.buffer, this.actualSizeInWords, this.actualSizeInWords-1)
 		if v {
-			this.rlwCursor.setRunningBit(v)
+			this.setCursor.setRunningBit(v)
 		}
 
-		this.rlwCursor.setRunningLength(LargestRunningLengthCount)
+		this.setCursor.setRunningLength(LargestRunningLengthCount)
 		number -= LargestRunningLengthCount
 	}
 
 	if number > 0 {
 		this.pushBack(0)
-		this.rlwCursor.resetMarker(this.buffer, this.actualSizeInWords, this.actualSizeInWords-1)
+		this.setCursor.resetMarker(this.buffer, this.actualSizeInWords, this.actualSizeInWords-1)
 		if v {
-			this.rlwCursor.setRunningBit(v)
+			this.setCursor.setRunningBit(v)
 		}
-		this.rlwCursor.setRunningLength(number)
+		this.setCursor.setRunningLength(number)
 	}
 
 	//fmt.Printf("ewah.go/addStreamOfEmptyWords: sizeinbits = %d, actuaSizeInWords = %d\n", this.sizeInBits, this.actualSizeInWords)
@@ -450,41 +450,41 @@ func (this *Ewah) addStreamOfEmptyWords(v bool, number int64) {
 
 // fastAddStreamOfEmptyWords adds many zeroes and ones faster. This does not update sizeInBits
 func (this *Ewah) fastAddStreamOfEmptyWords(v bool, number int64) {
-	if this.rlwCursor.getRunningBit() != v && this.rlwCursor.size() == 0 {
-		this.rlwCursor.setRunningBit(v)
-	} else if this.rlwCursor.getNumberOfLiteralWords() != 0 || this.rlwCursor.getRunningBit() != v {
+	if this.setCursor.getRunningBit() != v && this.setCursor.size() == 0 {
+		this.setCursor.setRunningBit(v)
+	} else if this.setCursor.getNumberOfLiteralWords() != 0 || this.setCursor.getRunningBit() != v {
 		this.pushBack(0)
-		this.rlwCursor.resetMarker(this.buffer, this.actualSizeInWords, this.actualSizeInWords-1)
+		this.setCursor.resetMarker(this.buffer, this.actualSizeInWords, this.actualSizeInWords-1)
 		if v {
-			this.rlwCursor.setRunningBit(v)
+			this.setCursor.setRunningBit(v)
 		}
 	}
 
-	runlen := this.rlwCursor.getRunningLength()
+	runlen := this.setCursor.getRunningLength()
 	whatWeCanAdd := int64(math.Min(float64(number), float64(LargestLiteralCount - runlen)))
 
-	this.rlwCursor.setRunningLength(runlen + whatWeCanAdd)
+	this.setCursor.setRunningLength(runlen + whatWeCanAdd)
 	number -= whatWeCanAdd
 
 	for number >= LargestRunningLengthCount {
 		this.pushBack(0)
-		this.rlwCursor.resetMarker(this.buffer, this.actualSizeInWords, this.actualSizeInWords-1)
+		this.setCursor.resetMarker(this.buffer, this.actualSizeInWords, this.actualSizeInWords-1)
 		if v {
-			this.rlwCursor.setRunningBit(v)
+			this.setCursor.setRunningBit(v)
 		}
 
-		this.rlwCursor.setRunningLength(LargestRunningLengthCount)
+		this.setCursor.setRunningLength(LargestRunningLengthCount)
 		number -= LargestRunningLengthCount
 	}
 
 	if number > 0 {
 		this.pushBack(0)
-		this.rlwCursor.resetMarker(this.buffer, this.actualSizeInWords, this.actualSizeInWords-1)
+		this.setCursor.resetMarker(this.buffer, this.actualSizeInWords, this.actualSizeInWords-1)
 		if v {
-			this.rlwCursor.setRunningBit(v)
+			this.setCursor.setRunningBit(v)
 		}
 
-		this.rlwCursor.setRunningLength(number)
+		this.setCursor.setRunningLength(number)
 	}
 }
 
@@ -493,17 +493,17 @@ func (this *Ewah) addStreamOfNegatedLiteralWords(data []int64, start, number int
 	leftOverNumber := int64(number)
 
 	for leftOverNumber > 0 {
-		numberOfLiteralWords := this.rlwCursor.getNumberOfLiteralWords()
+		numberOfLiteralWords := this.setCursor.getNumberOfLiteralWords()
 		whatWeCanAdd := int64(math.Min(float64(number), float64(LargestLiteralCount - numberOfLiteralWords)))
 
-		this.rlwCursor.setNumberOfLiteralWords(numberOfLiteralWords + whatWeCanAdd)
+		this.setCursor.setNumberOfLiteralWords(numberOfLiteralWords + whatWeCanAdd)
 		leftOverNumber -= whatWeCanAdd
 		this.negativePushBack(data, start, int32(whatWeCanAdd))
 		this.sizeInBits += whatWeCanAdd * wordInBits
 
 		if leftOverNumber > 0 {
 			this.pushBack(0)
-			this.rlwCursor.resetMarker(this.buffer, this.actualSizeInWords, this.actualSizeInWords-1)
+			this.setCursor.resetMarker(this.buffer, this.actualSizeInWords, this.actualSizeInWords-1)
 		}
 	}
 }
@@ -551,7 +551,7 @@ func (this *Ewah) pushBackMultiple(data []int64, start, number int32) {
 		oldBuffer := this.buffer
 		this.buffer = make([]int64, newSize)
 		copy(this.buffer, oldBuffer)
-		this.rlwCursor.resetMarker(this.buffer, this.actualSizeInWords, this.rlwCursor.marker)
+		this.setCursor.resetMarker(this.buffer, this.actualSizeInWords, this.setCursor.marker)
 	}
 	//fmt.Printf("ewah.go/pushBackMultiple: copy(this.buffer[%d:], data[%d:%d]), cap=%d", this.actualSizeInWords, start, start+number, cap(this.buffer))
 	copy(this.buffer[this.actualSizeInWords:], data[start:start+number])
@@ -609,7 +609,7 @@ func (this *Ewah) reserve(size int32) bitmap.Bitmap {
 		oldBuffer := this.buffer
 		this.buffer = make([]int64, size)
 		copy(this.buffer, oldBuffer)
-		this.rlwCursor.reset(this.buffer, this.actualSizeInWords)
+		this.setCursor.reset(this.buffer, this.actualSizeInWords)
 	}
 
 	return this

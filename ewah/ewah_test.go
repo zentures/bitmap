@@ -9,8 +9,8 @@ package ewah
 import (
 	"testing"
 	"math/rand"
-	//"fmt"
-	//"time"
+	"fmt"
+	"time"
 	"github.com/zhenjl/bitmap"
 )
 
@@ -20,7 +20,6 @@ const (
 
 	count int = 10000
 )
-/*
 
 var (
 	nums, nums10 []int64
@@ -910,7 +909,6 @@ func BenchmarkXor2(b *testing.B) {
 		}
 	}
 }
-*/
 
 // f is the function to call, like And, Or, Xor, AndNot
 // b1 is the number of bits for the first bitmap
