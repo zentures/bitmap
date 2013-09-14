@@ -7,9 +7,9 @@
 package ewah
 
 type BitmapStorage interface {
-	add(int64)
-	addStreamOfLiteralWords([]int64, int32, int32)
+	add(uint64)
+	addStreamOfLiteralWords([]uint64, int32, int32)
 	addStreamOfEmptyWords(bool, int64)
-	addStreamOfNegatedLiteralWords([]int64, int32, int32)
+	addStreamOfNegatedLiteralWords([]uint64, int32, int32)
 	setSizeInBits(int64) error
 }

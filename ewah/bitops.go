@@ -152,13 +152,13 @@ func (this *Ewah) Not() bitmap.Bitmap {
 			if c.getNumberOfLiteralWords() == 0 {
 				if c.getRunningLength() > 0 && c.getRunningBit() {
 					c.setNumberOfLiteralWords(int64(c.getNumberOfLiteralWords())-1)
-					this.addLiteralWord(int64(uint64(0) >> uint64(wordInBits - lastBits)))
+					this.addLiteralWord(uint64(0) >> uint64(wordInBits - lastBits))
 				}
 
 				break
 			}
 
-			this.buffer[c.marker + c.rlwLiteralRemaining] &= int64(^uint64(0) >> uint64(wordInBits - lastBits))
+			this.buffer[c.marker + c.rlwLiteralRemaining] &= ^uint64(0) >> uint64(wordInBits - lastBits)
 			break
 		}
 

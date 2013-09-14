@@ -19,10 +19,10 @@ type EWAHIterator struct {
 	// (embedded in the rlw attribute).
 	pointer int32
 
-	array []int64
+	array []uint64
 }
 
-func NewEWAHIterator(a []int64, sizeInWords int64) *EWAHIterator {
+func NewEWAHIterator(a []uint64, sizeInWords int64) *EWAHIterator {
 	return &EWAHIterator{
 		size: sizeInWords,
 		pointer: 0,
@@ -31,7 +31,7 @@ func NewEWAHIterator(a []int64, sizeInWords int64) *EWAHIterator {
 	}
 }
 
-func (this *EWAHIterator) buffer() []int64 {
+func (this *EWAHIterator) buffer() []uint64 {
 	return this.array
 }
 

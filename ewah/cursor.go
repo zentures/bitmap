@@ -19,7 +19,7 @@ import (
 // then we just start from the beginning (at least for now.)
 type cursor struct {
 	// buffer is a slice pointing to the original data
-	buffer []int64
+	buffer []uint64
 
 	// size is the size of the buffer, in words
 	bsize int64
@@ -46,14 +46,14 @@ type cursor struct {
 	pointer int64
 }
 
-func newCursor(a []int64, s int64) *cursor {
+func newCursor(a []uint64, s int64) *cursor {
 	//fmt.Println("cursor.go/New")
 	f := new(cursor)
 	f.reset(a, s)
 	return f
 }
 
-func (this *cursor) reset(a []int64, s int64) {
+func (this *cursor) reset(a []uint64, s int64) {
 	//fmt.Println("cursor.go/reset")
 	this.buffer = a
 	this.bsize = s
@@ -66,7 +66,7 @@ func (this *cursor) reset(a []int64, s int64) {
 	this.rlwLiteralChecked = 0
 }
 
-func (this *cursor) resetMarker(a []int64, s int64, m int64) {
+func (this *cursor) resetMarker(a []uint64, s int64, m int64) {
 	this.buffer = a
 	this.bsize = s
 	this.marker = m
@@ -256,7 +256,7 @@ func (this *cursor) copyForwardRemaining(container BitmapStorage) int64 {
 	return n
 }
 
-func (this *cursor) getLiteralWordAt(k int64) int64 {
+func (this *cursor) getLiteralWordAt(k int64) uint64 {
 	n := this.marker + int64(this.getNumberOfLiteralWords()) - this.rlwLiteralRemaining + 1 + k
 	if n >= this.bsize {
 		fmt.Printf("cursor.go/getLiteralWordAt: ERROR cursor = %v\n", this)
@@ -273,7 +273,7 @@ func (this *cursor) String() string {
 }
 
 
-func (this *cursor) getMarkerWord() int64 {
+func (this *cursor) getMarkerWord() uint64 {
 	return this.buffer[this.marker]
 }
 
@@ -291,21 +291,21 @@ func (this *cursor) getRunningBit() bool {
 // getRunningLength gets the running length
 func (this *cursor) getRunningLength() int64 {
 	// logical shift right
-	return int64((uint64(this.buffer[this.marker]) >> 1)) & LargestRunningLengthCount
+	return int64((uint64(this.buffer[this.marker]) >> 1) & LargestRunningLengthCount)
 }
 
 // setNumberOfLiteralWords sets the number of literal words
 func (this *cursor) setNumberOfLiteralWords(n int64) {
 	this.buffer[this.marker] |= NotRunningLengthPlusRunningBit
-	this.buffer[this.marker] &= (n << uint64(RunningLengthBits + 1)) | RunningLengthPlusRunningBit
+	this.buffer[this.marker] &= (uint64(n) << uint64(RunningLengthBits + 1)) | RunningLengthPlusRunningBit
 }
 
 // setRunningBit sets the running bit
 func (this *cursor) setRunningBit(b bool) {
 	if b {
-		this.buffer[this.marker] |= 1
+		this.buffer[this.marker] |= uint64(1)
 	} else {
-		this.buffer[this.marker] &= ^1
+		this.buffer[this.marker] &= ^uint64(1)
 	}
 }
 
@@ -317,7 +317,7 @@ func (this *cursor) setRunningLength(n int64) {
 	this.buffer[this.marker] |= ShiftedLargestRunningLengthCount
 	//fmt.Printf("setRunningLength shfitd: %064b\n", ShiftedLargestRunningLengthCount)
 	//fmt.Printf("setRunningLength before: %064b\n", uint64(*this.m))
-	this.buffer[this.marker] &= (n << 1) | NotShiftedLargestRunningLengthCount
+	this.buffer[this.marker] &= (uint64(n) << 1) | NotShiftedLargestRunningLengthCount
 	//fmt.Printf("setRunningLength  after: %064b\n", uint64(*this.m))
 }
 

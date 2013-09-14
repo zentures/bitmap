@@ -24,11 +24,11 @@ func newBitCounter() BitmapStorage {
 
 var _ BitmapStorage = (*bitCounter)(nil)
 
-func (this *bitCounter) add(newdata int64) {
-	this.oneBits += popcount_3(uint64(newdata))
+func (this *bitCounter) add(newdata uint64) {
+	this.oneBits += popcount_3(newdata)
 }
 
-func (this *bitCounter) addStreamOfLiteralWords(data []int64, start, number int32) {
+func (this *bitCounter) addStreamOfLiteralWords(data []uint64, start, number int32) {
 	for i := start; i < start + number; i++ {
 		this.add(data[i])
 	}
@@ -40,7 +40,7 @@ func (this *bitCounter) addStreamOfEmptyWords(v bool, number int64) {
 	}
 }
 
-func (this *bitCounter) addStreamOfNegatedLiteralWords(data []int64, start, number int32) {
+func (this *bitCounter) addStreamOfNegatedLiteralWords(data []uint64, start, number int32) {
 	for i := start; i < start + number; i++ {
 		this.add(^data[i])
 	}

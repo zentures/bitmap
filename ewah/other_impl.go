@@ -22,7 +22,7 @@ func (this *Ewah) Cardinality2() int64 {
 		}
 
 		for j := int32(0); j < localrlw.getNumberOfLiteralWords(); j++ {
-			counter += int64(popcount_3(uint64(i.buffer()[i.literalWords()]+int64(j))))
+			counter += int64(popcount_3(uint64(i.buffer()[i.literalWords()]+uint64(j))))
 		}
 	}
 
@@ -65,7 +65,7 @@ func (this *Ewah) Cardinality4() int64 {
 		}
 
 		for j := int32(0); j < localrlw.getNumberOfLiteralWords(); j++ {
-			counter += int64(popcount_4(uint64(i.buffer()[i.literalWords()]+int64(j))))
+			counter += int64(popcount_4(uint64(i.buffer()[i.literalWords()]+uint64(j))))
 		}
 	}
 
@@ -100,7 +100,7 @@ func (this *Ewah) Get1(i int64) bool {
 			//fmt.Printf("ewah.go/Get: index = %d\n", marker + (wordi - wordChecked) + 1)
 			//fmt.Printf("ewah.go/Get: word = %064b\n", this.buffer[marker + (wordi - wordChecked) + 1])
 			//fmt.Printf("ewah.go/Get: bit = %064b\n", this.buffer[marker + (wordi - wordChecked) + 1] & (int64(1) << biti))
-			return this.buffer[marker + (wordi - wordChecked) + 1] & (int64(1) << biti) != 0
+			return this.buffer[marker + (wordi - wordChecked) + 1] & (uint64(1) << biti) != 0
 		}
 		wordChecked += numOfLiteralWords
 		marker += numOfLiteralWords + 1
@@ -137,7 +137,7 @@ func (this *Ewah) Get2(i int64) bool {
 			//fmt.Printf("ewah.go/Get3: index = %d, literalwords = %d\n", int64(iter.literalWords()) + (wordi - wordChecked), iter.literalWords())
 			//fmt.Printf("ewah.go/Get3: %064b\n", this.buffer[int64(iter.literalWords()) + (wordi - wordChecked)])
 			//fmt.Printf("ewah.go/Get3: %064b\n", this.buffer[int64(iter.literalWords()) + (wordi - wordChecked)] & (int64(1) << biti))
-			return this.buffer[int64(iter.literalWords()) + (wordi - wordChecked)] & (int64(1) << biti) != 0
+			return this.buffer[int64(iter.literalWords()) + (wordi - wordChecked)] & (uint64(1) << biti) != 0
 		}
 		wordChecked += numOfLiteralWords
 	}
@@ -165,7 +165,7 @@ func (this *Ewah) Get3(i int64) bool {
 
 		if int64(wordi) < wordChecked + int64(brlw.getNumberOfLiteralWords()) {
 			w := j.getLiteralWordAt(int32(wordi - wordChecked))
-			return (w & (int64(1) << uint64(biti))) != 0
+			return (w & (uint64(1) << uint64(biti))) != 0
 		}
 
 		wordChecked += int64(brlw.getNumberOfLiteralWords())
@@ -277,13 +277,13 @@ func (this *Ewah) Not2() bitmap.Bitmap {
 			if m.getNumberOfLiteralWords() == 0 {
 				if m.getRunningLength() > 0 && m.getRunningBit() {
 					m.setNumberOfLiteralWords(int64(m.getNumberOfLiteralWords())-1)
-					this.addLiteralWord(int64(uint64(0) >> uint64(wordInBits - lastBits)))
+					this.addLiteralWord(uint64(0) >> uint64(wordInBits - lastBits))
 				}
 
 				break
 			}
 
-			this.buffer[marker + numOfLiteralWords] &= int64(^uint64(0) >> uint64(wordInBits - lastBits))
+			this.buffer[marker + numOfLiteralWords] &= ^uint64(0) >> uint64(wordInBits - lastBits)
 			break
 		}
 

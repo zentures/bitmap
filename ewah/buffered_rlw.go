@@ -9,15 +9,15 @@ package ewah
 import "fmt"
 
 type BufferedRunningLengthWord struct {
-	actualWord int64
+	actualWord uint64
 	literalWordOffset int32
 	numberOfLiteralWords int32
 	runningBit bool
 	runningLength int64
 }
 
-func newBufferedRunningLengthWord(a int64) *BufferedRunningLengthWord {
-	rlw := newRunningLengthWord([]int64{a}, 0)
+func newBufferedRunningLengthWord(a uint64) *BufferedRunningLengthWord {
+	rlw := newRunningLengthWord([]uint64{a}, 0)
 
 	return &BufferedRunningLengthWord {
 		actualWord: a,
@@ -28,7 +28,7 @@ func newBufferedRunningLengthWord(a int64) *BufferedRunningLengthWord {
 	}
 }
 
-func (this *BufferedRunningLengthWord) getActualWord() int64 {
+func (this *BufferedRunningLengthWord) getActualWord() uint64 {
 	return this.actualWord
 }
 
@@ -73,8 +73,8 @@ func (this *BufferedRunningLengthWord) size() int64 {
 }
 
 // reset resets the values using the provided word
-func (this *BufferedRunningLengthWord) reset(a int64) {
-	rlw := newRunningLengthWord([]int64{a}, 0)
+func (this *BufferedRunningLengthWord) reset(a uint64) {
+	rlw := newRunningLengthWord([]uint64{a}, 0)
 	this.actualWord = a
 	this.literalWordOffset = 0
 	this.numberOfLiteralWords = rlw.getNumberOfLiteralWords()

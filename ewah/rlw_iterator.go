@@ -8,7 +8,7 @@ package ewah
 
 type RLWIterator interface {
 	next() bool
-	getLiteralWordAt(int32) int64
+	getLiteralWordAt(int32) uint64
 	getNumberOfLiteralWords() int32
 	getRunningBit() bool
 	size() int64

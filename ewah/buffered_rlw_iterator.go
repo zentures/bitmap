@@ -11,7 +11,7 @@ import (
 )
 
 type BufferedRunningLengthWordIterator struct {
-	buffer []int64
+	buffer []uint64
 	literalWordStartPosition int32
 	brlw *BufferedRunningLengthWord
 	iterator *EWAHIterator
@@ -74,7 +74,7 @@ func (this *BufferedRunningLengthWordIterator) size() int64 {
 	return this.brlw.size()
 }
 
-func (this *BufferedRunningLengthWordIterator) getLiteralWordAt(index int32) int64 {
+func (this *BufferedRunningLengthWordIterator) getLiteralWordAt(index int32) uint64 {
 	//fmt.Println("getLiteralWordAt this.literalWordStartPosition + index =", this.literalWordStartPosition + index)
 	return this.buffer[this.literalWordStartPosition + index]
 }
