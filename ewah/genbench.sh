@@ -1,13 +1,5 @@
 #!/bin/bash
 
-cat <<EOF > benchmark_2_autogen_test.go
-package ewah
-
-import (
-    "testing"
-)
-EOF
-
 cat <<EOF > benchmark_autogen_test.go
 package ewah
 
@@ -15,6 +7,14 @@ import (
     "testing"
 )
 EOF
+
+#cat <<EOF > benchmark_2_autogen_test.go
+#package ewah
+#
+#import (
+#    "testing"
+#)
+#EOF
 
 # h = operations
 # i = # of bits for bitmap 1
@@ -38,12 +38,12 @@ func Benchmark_${h}_${i}_${j}_${k}_${l}(b *testing.B) {
 
 EOF
 
-                    cat <<EOF >> benchmark_2_autogen_test.go
-func Benchmark_2_${h}_${i}_${j}_${k}_${l}(b *testing.B) {
-    benchmarkDifferentCombinations2(b, "$h", $i, $j, $k, $l)
-}
-
-EOF
+#                    cat <<EOF >> benchmark_2_autogen_test.go
+#func Benchmark_2_${h}_${i}_${j}_${k}_${l}(b *testing.B) {
+#    benchmarkDifferentCombinations2(b, "$h", $i, $j, $k, $l)
+#}
+#
+#EOF
                 done
             done
         done

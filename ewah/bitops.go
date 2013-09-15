@@ -128,10 +128,10 @@ func (this *Ewah) Not() bitmap.Bitmap {
 
 	for !c.end() {
 		//fmt.Printf("bitops.go/Not2: c.marker = %d, sizeInWords = %d, literals = %d\n",
-		// c.marker, this.actualSizeInWords, c.rlwLiteralRemaining)
-		c.setRunningBit(!c.getRunningBit())
+		// c.marker, this.actualSizeInWords, c.literalRemaining())
+		c.setEmptyBit(!c.emptyBit())
 
-		for i := int64(1); i <= c.rlwLiteralRemaining; i++ {
+		for i := int64(1); i <= c.literalRemaining(); i++ {
 			//fmt.Printf("bitops.go/Not2: i = %d, buffer before = %064b\n", i, uint64(this.buffer[c.marker+i]))
 			this.buffer[c.marker + i] = ^this.buffer[c.marker + i]
 			//fmt.Printf("bitops.go/Not2: buffer  after = %064b\n", uint64(this.buffer[c.marker+i]))
@@ -139,7 +139,7 @@ func (this *Ewah) Not() bitmap.Bitmap {
 
 		// If this is the last word in the bitmap, we may need to do some special treatment since
 		// it may not be fully populated.
-		if c.marker+c.rlwLiteralRemaining+1 == this.actualSizeInWords {
+		if c.marker+c.literalRemaining()+1 == this.actualSizeInWords {
 			// If the last word is fully populated, then no need to do anything
 			lastBits := this.sizeInBits % wordInBits
 			if lastBits == 0 {
@@ -149,16 +149,16 @@ func (this *Ewah) Not() bitmap.Bitmap {
 			// If there are no literal words (or all empty words) and the lastBits is not zero, this means
 			// we need to make sure we break out the last empty word, and negate the populated portion of
 			// the word
-			if c.getNumberOfLiteralWords() == 0 {
-				if c.getRunningLength() > 0 && c.getRunningBit() {
-					c.setNumberOfLiteralWords(int64(c.getNumberOfLiteralWords())-1)
+			if c.literalCount() == 0 {
+				if c.emptyCount() > 0 && c.emptyBit() {
+					c.setLiteralCount(int64(c.literalCount())-1)
 					this.addLiteralWord(uint64(0) >> uint64(wordInBits - lastBits))
 				}
 
 				break
 			}
 
-			this.buffer[c.marker + c.rlwLiteralRemaining] &= ^uint64(0) >> uint64(wordInBits - lastBits)
+			this.buffer[c.marker + c.literalRemaining()] &= ^uint64(0) >> uint64(wordInBits - lastBits)
 			break
 		}
 
@@ -178,50 +178,49 @@ func (this *Ewah) andToContainer(a *Ewah, container BitmapStorage) {
 	jCursor := newCursor(j.buffer, j.SizeInWords())
 
 	// Keep going thru the words until one of the cursors have reached the end (checked > size)
-	for iCursor.rlwRemaining() > 0 && jCursor.rlwRemaining() > 0 {
-		//fmt.Println("bitops.go/andToContainer2: inside 1st for loop\n--- iCursor =", iCursor, "\n--- jCursor =", jCursor)
+	for iCursor.markerRemaining() > 0 && jCursor.markerRemaining() > 0 {
+		//fmt.Println("bitops.go/andToContainer2: --- inside 1st for loop\n--- iCursor =", iCursor, "\n--- jCursor =", jCursor)
 
 		// For each of the marker words, keep moving thru them until both have gone through their empty words
-		for iCursor.rlwEmptyRemaining > 0 || jCursor.rlwEmptyRemaining > 0 {
-			//fmt.Println("bitops.go/andToContainer2: inside 2nd for loop\n--- iCursor =", iCursor, "\n--- jCursor =", jCursor)
-
-
+		for iCursor.emptyRemaining() > 0 || jCursor.emptyRemaining() > 0 {
 			// Predator is the one that has more empty words. Prey is the one with less.
 			var prey, predator *cursor
-			if iCursor.rlwEmptyRemaining < jCursor.rlwEmptyRemaining {
+			if iCursor.emptyRemaining() < jCursor.emptyRemaining() {
 				prey, predator = iCursor, jCursor
 			} else {
 				prey, predator = jCursor, iCursor
 			}
 
-			if predator.getRunningBit() == false {
+			//fmt.Println("bitops.go/andToContainer2: --- inside 2nd for loop\n--- prey =", prey, "\n--- predator =", predator)
+
+			if predator.emptyBit() == false {
 				// If predator's (one with more empty words) empty words are false, which means all these words
 				// are 0, then the result of the AND operation will also be 0. So we insert the same number
 				// of 0 words into the result
-				container.addStreamOfEmptyWords(false, predator.rlwEmptyRemaining)
+				container.addStreamOfEmptyWords(false, predator.emptyRemaining())
 
 				// And we move both prey and predator forward by the same number of words
-				//fmt.Printf("bitops.go/andToContainer2: prey.moveForward(%d)\n", predator.rlwEmptyRemaining)
-				prey.moveForward(predator.rlwEmptyRemaining)
-				//fmt.Printf("bitops.go/andToContainer2: predator.moveForward(%d)\n", predator.rlwEmptyRemaining)
-				predator.moveForward(predator.rlwEmptyRemaining)
+				//fmt.Printf("bitops.go/andToContainer2: prey.moveForward(%d)\n", predator.emptyRemaining())
+				prey.moveForward(predator.emptyRemaining())
+				//fmt.Printf("bitops.go/andToContainer2: predator.moveForward(%d)\n", predator.emptyRemaining())
+				predator.moveForward(predator.emptyRemaining())
 			} else {
 				// If the predator's empty words are true, which means all these words are 1, then the result of
 				// the AND operation will be the same as the prey's words. So we will essentially copy the prey's
 				// words into the result set, up to the same number as the predator's running length. Prey may
 				// not have enough remaining words to cover the full running length, so we need to get back the
 				// total number that's been copied over.
-				//fmt.Printf("bitops.go/andToContainer2: prey.copyForward(%d)\n", predator.rlwEmptyRemaining)
-				index := prey.copyForward(container, predator.rlwEmptyRemaining, false)
-				container.addStreamOfEmptyWords(false, predator.rlwEmptyRemaining - index)
-				predator.moveForward(predator.rlwEmptyRemaining)
+				//fmt.Printf("bitops.go/andToContainer2: prey.copyForward(%d)\n", predator.emptyRemaining())
+				index, _ := prey.copyForward(container, predator.emptyRemaining(), false)
+				container.addStreamOfEmptyWords(false, predator.emptyRemaining() - index)
+				predator.moveForward(predator.emptyRemaining())
 			}
 		}
 
 		// Now that we have gone through all the empty words, let's take care of the left over literal words
-		leftOverLiterals := int64(math.Min(float64(iCursor.rlwLiteralRemaining), float64(jCursor.rlwLiteralRemaining)))
-		//fmt.Printf("bitops.go/andToContainer2: leftOverLiterals = %d, i.rlwLiteralRemaining = %d, j.rlwLiteralRemaining = %d\n",
-		//	leftOverLiterals, iCursor.rlwLiteralRemaining, jCursor.rlwLiteralRemaining)
+		leftOverLiterals := int64(math.Min(float64(iCursor.literalRemaining()), float64(jCursor.literalRemaining())))
+		//fmt.Printf("bitops.go/andToContainer2: leftOverLiterals = %d, i.literalRemaining() = %d, j.literalRemaining() = %d\n",
+		//	leftOverLiterals, iCursor.literalRemaining(), jCursor.literalRemaining())
 
 		if leftOverLiterals > 0 {
 			// for each of the left over literals, we will AND them and put the result in the contanier
@@ -245,7 +244,7 @@ func (this *Ewah) andToContainer(a *Ewah, container BitmapStorage) {
 	if this.adjustContainerSizeWhenAggregating {
 		// Only one of the cursors should words left. So we check to see if iCursor has left over words.
 		// If iCursor doesn't have anything left (checked >= size), then it must be jCursor that has left overs.
-		iRemains := iCursor.rlwRemaining() > 0
+		iRemains := iCursor.markerRemaining() > 0
 		var remaining *cursor
 
 		if iRemains {
@@ -280,36 +279,48 @@ func (this *Ewah) andNotToContainer(a *Ewah, container BitmapStorage) {
 	jCursor := newCursor(j.buffer, j.SizeInWords())
 
 	// Keep going thru the words until one of the cursors have reached the end (checked > size)
-	for iCursor.rlwRemaining() > 0 && jCursor.rlwRemaining() > 0 {
+	for iCursor.markerRemaining() > 0 && jCursor.markerRemaining() > 0 {
 
 		// For each of the marker words, keep moving thru them until both have gone through their empty words
-		for iCursor.rlwEmptyRemaining > 0 || jCursor.rlwEmptyRemaining > 0 {
+		for iCursor.emptyRemaining() > 0 || jCursor.emptyRemaining() > 0 {
 
 			// Predator is the one that has more empty words. Prey is the one with less.
 			var prey, predator *cursor
-			i_is_prey := iCursor.rlwEmptyRemaining < jCursor.rlwEmptyRemaining
+			i_is_prey := iCursor.emptyRemaining() < jCursor.emptyRemaining()
 			if i_is_prey {
 				prey, predator = iCursor, jCursor
 			} else {
 				prey, predator = jCursor, iCursor
 			}
+			//fmt.Println("bitops.go/andNotToContainer: ---")
+			//fmt.Println("bitops.go/andNotToContainer: iCursor =", iCursor)
+			//fmt.Println("bitops.go/andNotToContainer: jCursor =", jCursor)
+			//container.(*Ewah).printDetails()
 
-			if (predator.getRunningBit() == true && i_is_prey) || (predator.getRunningBit() == false && !i_is_prey) {
-				container.addStreamOfEmptyWords(false, predator.rlwEmptyRemaining)
-				prey.moveForward(predator.rlwEmptyRemaining)
-				predator.moveForward(predator.rlwEmptyRemaining)
+			if (predator.emptyBit() == true && i_is_prey) || (predator.emptyBit() == false && !i_is_prey) {
+				//fmt.Println("bitops.go/andNotToContainer: addStreamOfEmptyWords", predator.emptyRemaining())
+				container.addStreamOfEmptyWords(false, predator.emptyRemaining())
+				prey.moveForward(predator.emptyRemaining())
+				predator.moveForward(predator.emptyRemaining())
 			} else if i_is_prey {
-				index := prey.copyForward(container, predator.rlwEmptyRemaining, false)
-				container.addStreamOfEmptyWords(false, predator.rlwEmptyRemaining - index)
-				predator.moveForward(predator.rlwEmptyRemaining)
+				index, _ := prey.copyForward(container, predator.emptyRemaining(), false)
+				//fmt.Printf("bitops.go/andNotToContainer: addStreamOfEmptyWords %d, index = %d\n", predator.emptyRemaining(), index)
+				container.addStreamOfEmptyWords(false, predator.emptyRemaining() - index)
+				predator.moveForward(predator.emptyRemaining())
 			} else {
-				index := prey.copyForward(container, predator.rlwEmptyRemaining, true)
-				container.addStreamOfEmptyWords(true, predator.rlwEmptyRemaining - index)
-				predator.moveForward(predator.rlwEmptyRemaining)
+				index, _ := prey.copyForward(container, predator.emptyRemaining(), true)
+				//fmt.Printf("bitops.go/andNotToContainer: negated addStreamOfEmptyWords %d, index = %d\n", predator.emptyRemaining(), index)
+				container.addStreamOfEmptyWords(true, predator.emptyRemaining() - index)
+				predator.moveForward(predator.emptyRemaining())
 			}
 		}
 
-		leftOverLiterals := int64(math.Min(float64(iCursor.rlwLiteralRemaining), float64(jCursor.rlwLiteralRemaining)))
+		//fmt.Println("bitops.go/andNotToContainer: ===")
+		//fmt.Println("bitops.go/andNotToContainer: iCursor =", iCursor)
+		//fmt.Println("bitops.go/andNotToContainer: jCursor =", jCursor)
+		//container.(*Ewah).printDetails()
+
+		leftOverLiterals := int64(math.Min(float64(iCursor.literalRemaining()), float64(jCursor.literalRemaining())))
 
 		if leftOverLiterals > 0 {
 			for k := int64(0); k < leftOverLiterals; k++ {
@@ -321,8 +332,12 @@ func (this *Ewah) andNotToContainer(a *Ewah, container BitmapStorage) {
 		}
 	}
 
+	//fmt.Println("bitops.go/andNotToContainer: ***")
+	//fmt.Println("bitops.go/andNotToContainer: iCursor =", iCursor)
+	//fmt.Println("bitops.go/andNotToContainer: jCursor =", jCursor)
+	//container.(*Ewah).printDetails()
 
-	iRemains := iCursor.rlwRemaining() > 0
+	iRemains := iCursor.markerRemaining() > 0
 	var remaining *cursor
 
 	if iRemains {
@@ -340,6 +355,12 @@ func (this *Ewah) andNotToContainer(a *Ewah, container BitmapStorage) {
 	if this.adjustContainerSizeWhenAggregating {
 		container.setSizeInBits(int64(math.Max(float64(i.Size()), float64(j.Size()))))
 	}
+
+	//fmt.Println("bitops.go/andNotToContainer: >>>")
+	//fmt.Println("bitops.go/andNotToContainer: iCursor =", iCursor)
+	//fmt.Println("bitops.go/andNotToContainer: jCursor =", jCursor)
+	//container.(*Ewah).printDetails()
+
 }
 
 func (this *Ewah) andNotCardinality(a *Ewah) int32 {
@@ -355,32 +376,32 @@ func (this *Ewah) orToContainer(a *Ewah, container BitmapStorage) {
 	jCursor := newCursor(j.buffer, j.SizeInWords())
 
 	// Keep going thru the words until one of the cursors have reached the end (checked > size)
-	for iCursor.rlwRemaining() > 0 && jCursor.rlwRemaining() > 0 {
+	for iCursor.markerRemaining() > 0 && jCursor.markerRemaining() > 0 {
 		//fmt.Println("bitops.go/orToContainer: i =", iCursor)
 		//fmt.Println("bitops.go/orToContainer: j =", jCursor)
 		// For each of the marker words, keep moving thru them until both have gone through their empty words
-		for iCursor.rlwEmptyRemaining > 0 || jCursor.rlwEmptyRemaining > 0 {
+		for iCursor.emptyRemaining() > 0 || jCursor.emptyRemaining() > 0 {
 			// Predator is the one that has more empty words. Prey is the one with less.
 			var prey, predator *cursor
-			if iCursor.rlwEmptyRemaining < jCursor.rlwEmptyRemaining {
+			if iCursor.emptyRemaining() < jCursor.emptyRemaining() {
 				prey, predator = iCursor, jCursor
 			} else {
 				prey, predator = jCursor, iCursor
 			}
 
-			if predator.getRunningBit() == true {
-				container.addStreamOfEmptyWords(true, predator.rlwEmptyRemaining)
-				prey.moveForward(predator.rlwEmptyRemaining)
-				predator.moveForward(predator.rlwEmptyRemaining)
+			if predator.emptyBit() == true {
+				container.addStreamOfEmptyWords(true, predator.emptyRemaining())
+				prey.moveForward(predator.emptyRemaining())
+				predator.moveForward(predator.emptyRemaining())
 			} else {
-				index := prey.copyForward(container, predator.rlwEmptyRemaining, false)
-				container.addStreamOfEmptyWords(false, predator.rlwEmptyRemaining - index)
-				predator.moveForward(predator.rlwEmptyRemaining)
+				index, _ := prey.copyForward(container, predator.emptyRemaining(), false)
+				container.addStreamOfEmptyWords(false, predator.emptyRemaining() - index)
+				predator.moveForward(predator.emptyRemaining())
 			}
 		}
 
 		// Now that we have gone through all the empty words, let's take care of the left over literal words
-		leftOverLiterals := int64(math.Min(float64(iCursor.rlwLiteralRemaining), float64(jCursor.rlwLiteralRemaining)))
+		leftOverLiterals := int64(math.Min(float64(iCursor.literalRemaining()), float64(jCursor.literalRemaining())))
 
 		if leftOverLiterals > 0 {
 			for k := int64(0); k < leftOverLiterals; k++ {
@@ -397,7 +418,7 @@ func (this *Ewah) orToContainer(a *Ewah, container BitmapStorage) {
 	if this.adjustContainerSizeWhenAggregating {
 		// Only one of the cursors should words left. So we check to see if iCursor has left over words.
 		// If iCursor doesn't have anything left (checked >= size), then it must be jCursor that has left overs.
-		iRemains := iCursor.rlwRemaining() > 0
+		iRemains := iCursor.markerRemaining() > 0
 		var remaining *cursor
 
 		if iRemains {
@@ -424,32 +445,32 @@ func (this *Ewah) xorToContainer(a *Ewah, container BitmapStorage) {
 	jCursor := newCursor(j.buffer, j.SizeInWords())
 
 	// Keep going thru the words until one of the cursors have reached the end (checked > size)
-	for iCursor.rlwRemaining() > 0 && jCursor.rlwRemaining() > 0 {
+	for iCursor.markerRemaining() > 0 && jCursor.markerRemaining() > 0 {
 		//fmt.Println("bitops.go/orToContainer: i =", iCursor)
 		//fmt.Println("bitops.go/orToContainer: j =", jCursor)
 		// For each of the marker words, keep moving thru them until both have gone through their empty words
-		for iCursor.rlwEmptyRemaining > 0 || jCursor.rlwEmptyRemaining > 0 {
+		for iCursor.emptyRemaining() > 0 || jCursor.emptyRemaining() > 0 {
 			// Predator is the one that has more empty words. Prey is the one with less.
 			var prey, predator *cursor
-			if iCursor.rlwEmptyRemaining < jCursor.rlwEmptyRemaining {
+			if iCursor.emptyRemaining() < jCursor.emptyRemaining() {
 				prey, predator = iCursor, jCursor
 			} else {
 				prey, predator = jCursor, iCursor
 			}
 
-			if predator.getRunningBit() == false {
-				index := prey.copyForward(container, predator.rlwEmptyRemaining, false)
-				container.addStreamOfEmptyWords(false, predator.rlwEmptyRemaining - index)
-				predator.moveForward(predator.rlwEmptyRemaining)
+			if predator.emptyBit() == false {
+				index, _ := prey.copyForward(container, predator.emptyRemaining(), false)
+				container.addStreamOfEmptyWords(false, predator.emptyRemaining() - index)
+				predator.moveForward(predator.emptyRemaining())
 			} else {
-				index := prey.copyForward(container, predator.rlwEmptyRemaining, true)
-				container.addStreamOfEmptyWords(true, predator.rlwEmptyRemaining - index)
-				predator.moveForward(predator.rlwEmptyRemaining)
+				index, _ := prey.copyForward(container, predator.emptyRemaining(), true)
+				container.addStreamOfEmptyWords(true, predator.emptyRemaining() - index)
+				predator.moveForward(predator.emptyRemaining())
 			}
 		}
 
 		// Now that we have gone through all the empty words, let's take care of the left over literal words
-		leftOverLiterals := int64(math.Min(float64(iCursor.rlwLiteralRemaining), float64(jCursor.rlwLiteralRemaining)))
+		leftOverLiterals := int64(math.Min(float64(iCursor.literalRemaining()), float64(jCursor.literalRemaining())))
 
 		if leftOverLiterals > 0 {
 			for k := int64(0); k < leftOverLiterals; k++ {
@@ -462,7 +483,7 @@ func (this *Ewah) xorToContainer(a *Ewah, container BitmapStorage) {
 		}
 	}
 
-	iRemains := iCursor.rlwRemaining() > 0
+	iRemains := iCursor.markerRemaining() > 0
 	var remaining *cursor
 
 	if iRemains {
