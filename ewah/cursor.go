@@ -56,7 +56,16 @@ func (this *cursor) reset(a []uint64, s int64) {
 func (this *cursor) quickUpdate(a []uint64, s int64) {
 	this.buffer = a
 	this.bsize = s
+
+	this.updateMarkerCounts()
 }
+
+func (this *cursor) updateMarkerCounts() {
+	this.emptyCnt = int64((this.buffer[this.marker] >> 1) & LargestRunningLengthCount)
+	this.literalCnt = int64(this.buffer[this.marker] >> uint32((1 + RunningLengthBits)))
+	this.emptyWordBit = (int64(this.buffer[this.marker]) & 1) != 0
+}
+
 
 func (this *cursor) resetMarker(a []uint64, s int64, m int64) {
 	this.buffer = a
@@ -70,9 +79,7 @@ func (this *cursor) resetMarker(a []uint64, s int64, m int64) {
 	this.emptyChecked = 0
 	this.literalChecked = 0
 
-	this.emptyCnt = int64((this.buffer[this.marker] >> 1) & LargestRunningLengthCount)
-	this.literalCnt = int64(this.buffer[this.marker] >> uint32((1 + RunningLengthBits)))
-	this.emptyWordBit = (int64(this.buffer[this.marker]) & 1) != 0
+	this.updateMarkerCounts()
 }
 
 func (this *cursor) nextMarker() error {
@@ -84,16 +91,13 @@ func (this *cursor) nextMarker() error {
 	this.emptyChecked = 0
 	this.literalChecked = 0
 
+	this.updateMarkerCounts()
+
 	return nil
 }
 
 // moveForward moves the cursor forward by X words, effectively discarding them
 func (this *cursor) moveForward(x int64) (int64, error) {
-	//if this.end() {
-	//	fmt.Println("cursor.go/moveForward: ended")
-	//	return 0, errors.New("cursor:moveForward: at the end of the bitmap")
-	//}
-
 	a := x
 
 	for x > 0 {
@@ -139,7 +143,6 @@ func (this *cursor) moveForward(x int64) (int64, error) {
 	}
 
 	this.totalChecked += a-x
-	//fmt.Printf("cursor.go/moveForward: 4.x = %d, a = %d, cursor = %v\n", x, a, this)
 	return a-x, nil
 }
 
@@ -263,6 +266,13 @@ func (this *cursor) String() string {
 		this.bsize, this.marker, this.totalChecked, this.literalChecked, this.literalCount(), this.emptyChecked, this.emptyCount())
 }
 
+func (this *cursor) end() bool {
+	if this.marker + this.literalChecked + 1 >= this.bsize {
+		return true
+	}
+
+	return false
+}
 
 func (this *cursor) markerWord() uint64 {
 	return this.buffer[this.marker]
@@ -272,35 +282,27 @@ func (this *cursor) markerRemaining() int64 {
 	return this.emptyRemaining() + this.literalRemaining()
 }
 
-func (this *cursor) end() bool {
-	if this.marker + this.literalChecked + 1 >= this.bsize {
-		return true
-	}
-
-	return false
-}
-
 func (this *cursor) literalCount() int64 {
-	return int64(this.buffer[this.marker] >> uint32((1 + RunningLengthBits)))
-	//return this.literalCnt
+	//return int64(this.buffer[this.marker] >> uint32((1 + RunningLengthBits)))
+	return this.literalCnt
 }
 
 func (this *cursor) emptyBit() bool {
-	return (int64(this.buffer[this.marker]) & 1) != 0
-	//return this.emptyWordBit
+	//return (int64(this.buffer[this.marker]) & 1) != 0
+	return this.emptyWordBit
 }
 
 func (this *cursor) emptyCount() int64 {
-	return int64((this.buffer[this.marker] >> 1) & LargestRunningLengthCount)
-	//return this.emptyCnt
+	//return int64((this.buffer[this.marker] >> 1) & LargestRunningLengthCount)
+	return this.emptyCnt
 }
 
 func (this *cursor) literalRemaining() int64 {
-	return this.literalCount() - this.literalChecked
+	return this.literalCnt - this.literalChecked
 }
 
 func (this *cursor) emptyRemaining() int64 {
-	return this.emptyCount() - this.emptyChecked
+	return this.emptyCnt - this.emptyChecked
 }
 
 func (this *cursor) setLiteralCount(n int64) {
@@ -323,33 +325,5 @@ func (this *cursor) setEmptyCount(n int64) {
 
 // size returns the size in uncompressed words represented by this running length word
 func (this *cursor) size() int64 {
-	return this.emptyCount() + this.literalCount()
+	return this.emptyCnt + this.literalCnt
 }
-
-/*
-func (this *cursor) setNumberOfLiteralWords(n int64) {
-	this.setLiteralCount(n)
-}
-
-func (this *cursor) getRunningBit() bool {
-	return this.emptyBit()
-}
-
-func (this *cursor) getRunningLength() int64 {
-	return this.emptyCount()
-}
-
-func (this *cursor) setRunningBit(b bool) {
-	this.setEmptyBit(b)
-}
-
-func (this *cursor) setRunningLength(n int64) {
-	this.setEmptyCount(n)
-}
-
-func (this *cursor) getNumberOfLiteralWords() int64 {
-	return this.literalCount()
-}
-
-*/
-
