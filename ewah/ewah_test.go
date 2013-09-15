@@ -43,8 +43,8 @@ func init() {
 		nums10[i] = bit
 	}
 
-	//bm = New().(*Ewah)
-	//bm10 = New().(*Ewah)
+	bm = New().(*Ewah)
+	bm10 = New().(*Ewah)
 }
 
 func TestSet(t *testing.T) {
@@ -58,8 +58,8 @@ func TestSet(t *testing.T) {
 			t.Fatalf("Problem setting bm10[%d] with number %d\n", i, nums10[i])
 		}
 	}
-	bm.PrintStats(false)
-	bm10.PrintStats(false)
+	//bm.PrintStats(false)
+	//bm10.PrintStats(false)
 }
 
 func TestSet2(t *testing.T) {
