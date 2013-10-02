@@ -385,7 +385,7 @@ func (this *Ewah) addStreamOfLiteralWords(data []uint64, start, number int32) {
 
 	for leftOverNumber > 0 {
 		numberOfLiteralWords := this.setCursor.literalCount()
-		whatWeCanAdd := int64(math.Min(float64(number), float64(LargestLiteralCount - uint64(numberOfLiteralWords))))
+		whatWeCanAdd := int64(math.Min(float64(leftOverNumber), float64(LargestLiteralCount - uint64(numberOfLiteralWords))))
 
 		this.setCursor.setLiteralCount(numberOfLiteralWords + whatWeCanAdd)
 		leftOverNumber -= whatWeCanAdd
@@ -496,7 +496,7 @@ func (this *Ewah) addStreamOfNegatedLiteralWords(data []uint64, start, number in
 
 	for leftOverNumber > 0 {
 		numberOfLiteralWords := this.setCursor.literalCount()
-		whatWeCanAdd := int64(math.Min(float64(number), float64(LargestLiteralCount - uint64(numberOfLiteralWords))))
+		whatWeCanAdd := int64(math.Min(float64(leftOverNumber), float64(LargestLiteralCount - uint64(numberOfLiteralWords))))
 
 		this.setCursor.setLiteralCount(numberOfLiteralWords + whatWeCanAdd)
 		leftOverNumber -= whatWeCanAdd
