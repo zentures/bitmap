@@ -9,7 +9,7 @@ package bitset
 import (
 	"testing"
 	"math/rand"
-	"github.com/zhenjl/bitmap"
+	"github.com/reducedb/bitmap"
 )
 
 const (

@@ -7,7 +7,7 @@
 package ewah
 
 import (
-	"github.com/zhenjl/bitmap"
+	"github.com/reducedb/bitmap"
 	"math"
 )
 

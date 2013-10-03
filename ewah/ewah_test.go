@@ -10,7 +10,7 @@ import (
 	"testing"
 	"math/rand"
 	"fmt"
-	"github.com/zhenjl/bitmap"
+	"github.com/reducedb/bitmap"
 )
 
 const (

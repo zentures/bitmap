@@ -8,7 +8,7 @@ package bitset
 
 import (
 	"github.com/willf/bitset"
-	"github.com/zhenjl/bitmap"
+	"github.com/reducedb/bitmap"
 )
 
 type Bitset struct {
