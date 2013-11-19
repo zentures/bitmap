@@ -7,15 +7,16 @@
 package bitset
 
 import (
-	"testing"
-	"math/rand"
 	"github.com/reducedb/bitmap"
+	"math/rand"
+	"testing"
 )
 
 const (
 	c1 uint32 = 0xcc9e2d51
 	c2 uint32 = 0x1b873593
 )
+
 /*
 var (
 	nums, nums10 []int64
@@ -409,14 +410,14 @@ func benchmarkDifferentCombinations(b *testing.B, op string, b1, b2 int, s1, s2 
 	bit := int64(0)
 	rand.Seed(int64(c1))
 	for i := 0; i < b1; i++ {
-		bit += int64(rand.Intn(s1)+1)
+		bit += int64(rand.Intn(s1) + 1)
 		m1.Set(bit)
 	}
 
 	bit = 0
 	rand.Seed(int64(c2))
 	for i := 0; i < b2; i++ {
-		bit += int64(rand.Intn(s1)+1)
+		bit += int64(rand.Intn(s1) + 1)
 		m2.Set(bit)
 	}
 
@@ -441,4 +442,3 @@ func benchmarkDifferentCombinations(b *testing.B, op string, b1, b2 int, s1, s2 
 		}
 	}
 }
-

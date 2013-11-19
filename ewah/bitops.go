@@ -12,7 +12,6 @@ import (
 )
 
 func (this *Ewah) And(a ...bitmap.Bitmap) bitmap.Bitmap {
-	n := len(a)
 	b, ok := a[0].(*Ewah)
 	if !ok {
 		return nil
@@ -25,8 +24,8 @@ func (this *Ewah) And(a ...bitmap.Bitmap) bitmap.Bitmap {
 
 	this.andToContainer(b, ans)
 
-	for i := 1; i < n; i++ {
-		b, ok := a[i].(*Ewah)
+	for _, v := range a[1:] {
+		b, ok := v.(*Ewah)
 		if !ok {
 			return nil
 		}
@@ -40,7 +39,6 @@ func (this *Ewah) And(a ...bitmap.Bitmap) bitmap.Bitmap {
 }
 
 func (this *Ewah) AndNot(a ...bitmap.Bitmap) bitmap.Bitmap {
-	n := len(a)
 	b, ok := a[0].(*Ewah)
 	if !ok {
 		return nil
@@ -53,8 +51,8 @@ func (this *Ewah) AndNot(a ...bitmap.Bitmap) bitmap.Bitmap {
 
 	this.andNotToContainer(b, ans)
 
-	for i := 1; i < n; i++ {
-		b, ok := a[i].(*Ewah)
+	for _, v := range a[1:] {
+		b, ok := v.(*Ewah)
 		if !ok {
 			return nil
 		}
@@ -68,7 +66,6 @@ func (this *Ewah) AndNot(a ...bitmap.Bitmap) bitmap.Bitmap {
 }
 
 func (this *Ewah) Or(a ...bitmap.Bitmap) bitmap.Bitmap {
-	n := len(a)
 	b, ok := a[0].(*Ewah)
 	if !ok {
 		return nil
@@ -81,8 +78,8 @@ func (this *Ewah) Or(a ...bitmap.Bitmap) bitmap.Bitmap {
 
 	this.orToContainer(b, ans)
 
-	for i := 1; i < n; i++ {
-		b, ok := a[i].(*Ewah)
+	for _, v := range a[1:] {
+		b, ok := v.(*Ewah)
 		if !ok {
 			return nil
 		}
@@ -96,7 +93,6 @@ func (this *Ewah) Or(a ...bitmap.Bitmap) bitmap.Bitmap {
 }
 
 func (this *Ewah) Xor(a ...bitmap.Bitmap) bitmap.Bitmap {
-	n := len(a)
 	b, ok := a[0].(*Ewah)
 	if !ok {
 		return nil
@@ -109,8 +105,8 @@ func (this *Ewah) Xor(a ...bitmap.Bitmap) bitmap.Bitmap {
 
 	this.xorToContainer(b, ans)
 
-	for i := 1; i < n; i++ {
-		b, ok := a[i].(*Ewah)
+	for _, v := range a[1:] {
+		b, ok := v.(*Ewah)
 		if !ok {
 			return nil
 		}
@@ -131,10 +127,8 @@ func (this *Ewah) Not() bitmap.Bitmap {
 		// c.marker, this.actualSizeInWords, c.literalRemaining())
 		c.setEmptyBit(!c.emptyBit())
 
-		for i := int64(1); i <= c.literalRemaining(); i++ {
-			//fmt.Printf("bitops.go/Not2: i = %d, buffer before = %064b\n", i, uint64(this.buffer[c.marker+i]))
-			this.buffer[c.marker + i] = ^this.buffer[c.marker + i]
-			//fmt.Printf("bitops.go/Not2: buffer  after = %064b\n", uint64(this.buffer[c.marker+i]))
+		for i, v := range this.buffer[c.marker+1 : c.marker+c.literalRemaining()+1] {
+			this.buffer[c.marker+int64(i)+1] = ^v
 		}
 
 		// If this is the last word in the bitmap, we may need to do some special treatment since
@@ -151,14 +145,14 @@ func (this *Ewah) Not() bitmap.Bitmap {
 			// the word
 			if c.literalCount() == 0 {
 				if c.emptyCount() > 0 && c.emptyBit() {
-					c.setLiteralCount(int64(c.literalCount())-1)
-					this.addLiteralWord(uint64(0) >> uint64(wordInBits - lastBits))
+					c.setLiteralCount(int64(c.literalCount()) - 1)
+					this.addLiteralWord(uint64(0) >> uint64(wordInBits-lastBits))
 				}
 
 				break
 			}
 
-			this.buffer[c.marker + c.literalRemaining()] &= ^uint64(0) >> uint64(wordInBits - lastBits)
+			this.buffer[c.marker+c.literalRemaining()] &= ^uint64(0) >> uint64(wordInBits-lastBits)
 			break
 		}
 
@@ -212,7 +206,7 @@ func (this *Ewah) andToContainer(a *Ewah, container BitmapStorage) {
 				// total number that's been copied over.
 				//fmt.Printf("bitops.go/andToContainer2: prey.copyForward(%d)\n", predator.emptyRemaining())
 				index, _ := prey.copyForward(container, predator.emptyRemaining(), false)
-				container.addStreamOfEmptyWords(false, predator.emptyRemaining() - index)
+				container.addStreamOfEmptyWords(false, predator.emptyRemaining()-index)
 				predator.moveForward(predator.emptyRemaining())
 			}
 		}
@@ -305,12 +299,12 @@ func (this *Ewah) andNotToContainer(a *Ewah, container BitmapStorage) {
 			} else if i_is_prey {
 				index, _ := prey.copyForward(container, predator.emptyRemaining(), false)
 				//fmt.Printf("bitops.go/andNotToContainer: addStreamOfEmptyWords %d, index = %d\n", predator.emptyRemaining(), index)
-				container.addStreamOfEmptyWords(false, predator.emptyRemaining() - index)
+				container.addStreamOfEmptyWords(false, predator.emptyRemaining()-index)
 				predator.moveForward(predator.emptyRemaining())
 			} else {
 				index, _ := prey.copyForward(container, predator.emptyRemaining(), true)
 				//fmt.Printf("bitops.go/andNotToContainer: negated addStreamOfEmptyWords %d, index = %d\n", predator.emptyRemaining(), index)
-				container.addStreamOfEmptyWords(true, predator.emptyRemaining() - index)
+				container.addStreamOfEmptyWords(true, predator.emptyRemaining()-index)
 				predator.moveForward(predator.emptyRemaining())
 			}
 		}
@@ -395,7 +389,7 @@ func (this *Ewah) orToContainer(a *Ewah, container BitmapStorage) {
 				predator.moveForward(predator.emptyRemaining())
 			} else {
 				index, _ := prey.copyForward(container, predator.emptyRemaining(), false)
-				container.addStreamOfEmptyWords(false, predator.emptyRemaining() - index)
+				container.addStreamOfEmptyWords(false, predator.emptyRemaining()-index)
 				predator.moveForward(predator.emptyRemaining())
 			}
 		}
@@ -460,11 +454,11 @@ func (this *Ewah) xorToContainer(a *Ewah, container BitmapStorage) {
 
 			if predator.emptyBit() == false {
 				index, _ := prey.copyForward(container, predator.emptyRemaining(), false)
-				container.addStreamOfEmptyWords(false, predator.emptyRemaining() - index)
+				container.addStreamOfEmptyWords(false, predator.emptyRemaining()-index)
 				predator.moveForward(predator.emptyRemaining())
 			} else {
 				index, _ := prey.copyForward(container, predator.emptyRemaining(), true)
-				container.addStreamOfEmptyWords(true, predator.emptyRemaining() - index)
+				container.addStreamOfEmptyWords(true, predator.emptyRemaining()-index)
 				predator.moveForward(predator.emptyRemaining())
 			}
 		}

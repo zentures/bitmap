@@ -7,8 +7,8 @@
 package bitset
 
 import (
-	"github.com/willf/bitset"
 	"github.com/reducedb/bitmap"
+	"github.com/willf/bitset"
 )
 
 type Bitset struct {
@@ -151,4 +151,3 @@ func (this *Bitset) Not() bitmap.Bitmap {
 	this.b = this.b.Complement()
 	return this
 }
-

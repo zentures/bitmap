@@ -7,10 +7,10 @@
 package ewah
 
 import (
-	"testing"
-	"math/rand"
 	"fmt"
 	"github.com/reducedb/bitmap"
+	"math/rand"
+	"testing"
 )
 
 const (
@@ -22,7 +22,7 @@ const (
 
 var (
 	nums, nums10 []int64
-	bm, bm10 *Ewah
+	bm, bm10     *Ewah
 )
 
 func init() {
@@ -32,14 +32,14 @@ func init() {
 	bit := int64(0)
 	rand.Seed(int64(c1))
 	for i := 0; i < count; i++ {
-		bit += int64(rand.Intn(10000)+1)
+		bit += int64(rand.Intn(10000) + 1)
 		nums[i] = bit
 	}
 
 	bit = int64(0)
 	rand.Seed(int64(c2))
 	for i := 0; i < count; i++ {
-		bit += int64(rand.Intn(10000)+1)
+		bit += int64(rand.Intn(10000) + 1)
 		nums10[i] = bit
 	}
 
@@ -72,7 +72,7 @@ func TestSet2(t *testing.T) {
 		bit := int64(0)
 		rand.Seed(int64(c1))
 		for i := 0; i < count; i++ {
-			bit += int64(rand.Intn(int(rs[r]))+1)
+			bit += int64(rand.Intn(int(rs[r])) + 1)
 			nums2[i] = bit
 		}
 
@@ -97,7 +97,7 @@ func TestSet2(t *testing.T) {
 
 func TestGet(t *testing.T) {
 	for i := 0; i < count; i++ {
-		if ! bm.Get(nums[i]) {
+		if !bm.Get(nums[i]) {
 			t.Fatalf("Check(%d) at %d failed\n", nums[i], i)
 		}
 	}
@@ -150,7 +150,7 @@ func TestClone(t *testing.T) {
 	bm2 := bm.Clone()
 
 	for i := 0; i < count; i++ {
-		if ! bm2.Get(nums[i]) {
+		if !bm2.Get(nums[i]) {
 			t.Fatalf("Check(%d) at %d failed\n", nums[i], i)
 		}
 	}
@@ -162,7 +162,7 @@ func TestCopy(t *testing.T) {
 	bm2.Copy(bm)
 
 	for i := 0; i < count; i++ {
-		if ! bm2.Get(nums[i]) {
+		if !bm2.Get(nums[i]) {
 			t.Fatalf("Check(%d) at %d failed\n", nums[i], i)
 		}
 	}
@@ -184,7 +184,6 @@ func TestAnd(t *testing.T) {
 	if bm4.Cardinality() != 1 {
 		t.Fatal("Cardinality != 1")
 	}
-
 
 	if bm4.Get(10) {
 		t.Fatalf("Get(%d) failed, should NOT be set\n", 10)
@@ -294,7 +293,7 @@ func TestNot(t *testing.T) {
 		}
 	}
 
-	if c1 != size - c2 {
+	if c1 != size-c2 {
 		t.Fatalf("c1 (%d) != size (%d) - c2 (%d)", c1, size, c2)
 	}
 }
@@ -341,7 +340,7 @@ func BenchmarkGet(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		if ! bm.Get(nums[i%count]) {
+		if !bm.Get(nums[i%count]) {
 			failed += 1
 		}
 	}
@@ -410,14 +409,14 @@ func benchmarkDifferentCombinations(b *testing.B, op string, b1, b2 int, s1, s2 
 	bit := int64(0)
 	rand.Seed(int64(c1))
 	for i := 0; i < b1; i++ {
-		bit += int64(rand.Intn(s1)+1)
+		bit += int64(rand.Intn(s1) + 1)
 		m1.Set(bit)
 	}
 
 	bit = 0
 	rand.Seed(int64(c2))
 	for i := 0; i < b2; i++ {
-		bit += int64(rand.Intn(s1)+1)
+		bit += int64(rand.Intn(s1) + 1)
 		m2.Set(bit)
 	}
 
@@ -459,14 +458,14 @@ func testGenerateData(t *testing.T) {
 					bit := int64(0)
 					rand.Seed(int64(c1))
 					for a := 0; a < is[i]; a++ {
-						bit += int64(rand.Intn(ks[k])+1)
+						bit += int64(rand.Intn(ks[k]) + 1)
 						m1.Set(bit)
 					}
 
 					bit = 0
 					rand.Seed(int64(c2))
 					for b := 0; b < js[j]; b++ {
-						bit += int64(rand.Intn(ls[l])+1)
+						bit += int64(rand.Intn(ls[l]) + 1)
 						m2.Set(bit)
 					}
 

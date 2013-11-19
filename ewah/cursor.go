@@ -7,9 +7,9 @@
 package ewah
 
 import (
-	"math"
-	"fmt"
 	"errors"
+	"fmt"
+	"math"
 )
 
 // cursor is a struct that keeps track of the last marker checked.
@@ -37,8 +37,8 @@ type cursor struct {
 	totalChecked int64
 
 	// Keep track of these so we don't have to do bitwise op every time
-	emptyCnt int64
-	literalCnt int64
+	emptyCnt     int64
+	literalCnt   int64
 	emptyWordBit bool
 }
 
@@ -66,7 +66,6 @@ func (this *cursor) updateMarkerCounts() {
 	this.emptyWordBit = (int64(this.buffer[this.marker]) & 1) != 0
 }
 
-
 func (this *cursor) resetMarker(a []uint64, s int64, m int64) {
 	this.buffer = a
 	this.bsize = s
@@ -87,7 +86,7 @@ func (this *cursor) nextMarker() error {
 		return errors.New("cursor.go/nextMarker: No more markers in this buffer")
 	}
 
-	this.marker += this.literalCount()+1
+	this.marker += this.literalCount() + 1
 	this.emptyChecked = 0
 	this.literalChecked = 0
 
@@ -142,8 +141,8 @@ func (this *cursor) moveForward(x int64) (int64, error) {
 		}
 	}
 
-	this.totalChecked += a-x
-	return a-x, nil
+	this.totalChecked += a - x
+	return a - x, nil
 }
 
 // copyForward copies X words of the buffer into the container, and moves forward to the next word
@@ -164,7 +163,7 @@ func (this *cursor) copyForward(container BitmapStorage, max int64, negated bool
 		// First we will copy all the empty words over first. If there are more empty words than we need,
 		// then we will only copy up to max.
 		if pl = this.emptyRemaining(); pl > 0 {
-			if index + pl > max {
+			if index+pl > max {
 				pl = max - index
 			}
 
@@ -179,10 +178,9 @@ func (this *cursor) copyForward(container BitmapStorage, max int64, negated bool
 		// Now we copy the remaining literal words. If there are more literal words than we need, then we
 		// just copy up to max
 		if pd = this.literalRemaining(); pd > 0 {
-			if pd + index > max {
+			if pd+index > max {
 				pd = max - index
 			}
-
 
 			// Copy the literal words into the container, starting at the next unchecked position
 			start := this.marker + this.literalChecked + 1
@@ -239,7 +237,7 @@ func (this *cursor) copyForwardRemaining(container BitmapStorage) (int64, error)
 		container.addStreamOfEmptyWords(this.emptyBit(), this.emptyRemaining())
 		n += this.emptyRemaining()
 
-		container.addStreamOfLiteralWords(this.buffer, int32(this.marker + this.literalChecked)+1, int32(this.literalRemaining()))
+		container.addStreamOfLiteralWords(this.buffer, int32(this.marker+this.literalChecked)+1, int32(this.literalRemaining()))
 		n += this.literalRemaining()
 
 		this.moveForward(this.markerRemaining())
@@ -267,7 +265,7 @@ func (this *cursor) String() string {
 }
 
 func (this *cursor) end() bool {
-	if this.marker + this.literalChecked + 1 >= this.bsize {
+	if this.marker+this.literalChecked+1 >= this.bsize {
 		return true
 	}
 
@@ -307,7 +305,7 @@ func (this *cursor) emptyRemaining() int64 {
 
 func (this *cursor) setLiteralCount(n int64) {
 	this.buffer[this.marker] |= NotRunningLengthPlusRunningBit
-	this.buffer[this.marker] &= (uint64(n) << uint64(RunningLengthBits + 1)) | RunningLengthPlusRunningBit
+	this.buffer[this.marker] &= (uint64(n) << uint64(RunningLengthBits+1)) | RunningLengthPlusRunningBit
 }
 
 func (this *cursor) setEmptyBit(b bool) {
